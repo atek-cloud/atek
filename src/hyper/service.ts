@@ -6,20 +6,21 @@ import { EventEmitter } from 'events'
 import dht from '@hyperswarm/dht'
 import ram from 'random-access-memory'
 import { ServiceInstance } from '../services/instance.js'
-import * as atekService from '../gen/atek.cloud/service.js'
-import HypercoreAPIServer from '../gen/atek.cloud/hypercore-api.server.js'
+import AtekService from '../gen/atek.cloud/service.js'
+import HypercoreApiServer from '../gen/atek.cloud/hypercore-api.server.js'
 import {
-  Create_Response,
-  Describe_Response,
-  AppendData,
+  CreateResponse,
+  DescribeResponse,
   GetOptions,
   DownloadOptions,
-  UpdateOpts,
-  Seek_Response,
-  ConfigureNetworkOpts
+  UpdateOptions,
+  SeekResponse,
+  ConfigureNetworkOptions
 } from '../gen/atek.cloud/hypercore-api.js'
 
-interface TODO {}
+interface APIs {
+  hyper: HypercoreApiServer
+}
 
 interface HyperDHT extends EventEmitter {
   listen: () => void
@@ -28,14 +29,14 @@ interface HyperDHT extends EventEmitter {
 }
 
 export class HyperServiceInstance extends ServiceInstance {
-  server: HyperspaceServer
-  client: HyperspaceClient
-  dht: HyperDHT
-  api: TODO
+  server?: HyperspaceServer
+  client?: HyperspaceClient
+  dht?: HyperDHT
+  apis: APIs
 
-  constructor (settings: atekService.Service) {
+  constructor (settings: AtekService) {
     super(settings)
-    this.api = {
+    this.apis = {
       hyper: this.createHyperApi()
     }
   }
@@ -133,53 +134,80 @@ export class HyperServiceInstance extends ServiceInstance {
   }
 
   createHyperApi () {
-    return new HypercoreAPIServer({
-      create (): Promise<Create_Response> {
+    return new HypercoreApiServer({
+      create (): Promise<CreateResponse> {
         // TODO
+        return Promise.resolve({
+          key: new Uint8Array(),
+          discoveryKey: new Uint8Array(),
+          writable: false,
+          length: 0,
+          byteLength: 0
+        })
       },
   
-      describe (key: Buffer): Promise<Describe_Response> {
+      describe (key: Uint8Array): Promise<DescribeResponse> {
         // TODO
+        return Promise.resolve({
+          key,
+          discoveryKey: new Uint8Array(),
+          writable: false,
+          length: 0,
+          byteLength: 0
+        })
       },
       
-      append (key: Buffer, data: AppendData): Promise<number> {
+      append (key: Uint8Array, data: Uint8Array | Uint8Array[]): Promise<number> {
         // TODO
+        return Promise.resolve(0)
       },
       
-      get (key: Buffer, index: number, options: GetOptions): Promise<Buffer> {
+      get (key: Uint8Array, index: number, options: GetOptions): Promise<Uint8Array> {
         // TODO
+        return Promise.resolve(new Uint8Array())
       },
       
-      cancel (key: Buffer, getCallId: number): Promise<void> {
+      cancel (key: Uint8Array, getCallId: number): Promise<void> {
         // TODO
+        return Promise.resolve(undefined)
       },
       
-      has (key: Buffer, index: number): Promise<boolean> {
+      has (key: Uint8Array, index: number): Promise<boolean> {
         // TODO
+        return Promise.resolve(false)
       },
       
-      download (key: Buffer, start: number, end: number, options: DownloadOptions): Promise<void> {
+      download (key: Uint8Array, start: number, end: number, options: DownloadOptions): Promise<void> {
         // TODO
+        return Promise.resolve(undefined)
       },
       
-      undownload (key: Buffer, downloadCallId: number): Promise<void> {
+      undownload (key: Uint8Array, downloadCallId: number): Promise<void> {
         // TODO
+        return Promise.resolve(undefined)
       },
       
-      downloaded (key: Buffer, start: number, end: number): Promise<number> {
+      downloaded (key: Uint8Array, start: number, end: number): Promise<number> {
         // TODO
+        return Promise.resolve(0)
       },
       
-      update (key: Buffer, opts: UpdateOpts): Promise<void> {
+      update (key: Uint8Array, opts: UpdateOptions): Promise<void> {
         // TODO
+        return Promise.resolve(undefined)
       },
       
-      seek (key: Buffer, byteOffset: number): Promise<Seek_Response> {
+      seek (key: Uint8Array, byteOffset: number): Promise<SeekResponse> {
         // TODO
+        return Promise.resolve({
+          index: 0,
+          relativeOffset: 0
+        })
       },
       
-      configureNetwork (key: Buffer, opts: ConfigureNetworkOpts): Promise<void> {
+      configureNetwork (key: Uint8Array, opts: ConfigureNetworkOptions): Promise<void> {
         // TODO
+        return Promise.resolve(undefined)
       }
     })
   }
