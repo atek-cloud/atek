@@ -1,0 +1,20 @@
+.col2 {
+  display: grid;
+  grid-template-columns: 640px 1fr;
+  grid-gap: 20px;
+  max-width: 920px;
+}
+
+.col2 > :last-child {
+  min-width: 0;
+}
+
+.shell-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  grid-gap: 10px;
+}
+
+.col2 > :last-child {
+  min-width: 0;
+}

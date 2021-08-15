@@ -1,0 +1,52 @@
+
+body.theme-vanilla-light {
+  --color-text-default: #000;
+  --color-text-default-2: #1f2937;
+  --color-text-default-3: #4b5563;
+  --color-text-default-4: #9ca3af;
+  --color-text-inverse: #fff;
+  --color-text-inverse-2: #f9fafb;
+  --color-text-inverse-3: #f3f4f6;
+  --color-text-inverse-4: #e5e7eb;
+  --color-text-primary: #2563eb;
+  --color-text-primary-2: #60a5fa;
+  --color-text-secondary: #16a34a;
+  --color-text-secondary-2: #4ade80;
+  --color-text-error: #dc2626;
+  --color-text-error-2: #f87171;
+  --color-text-link: #2563eb;
+
+  --color-bg-default: #fff;
+  --color-bg-default-2: #f9fafb;
+  --color-bg-default-3: #f3f4f6;
+  --color-bg-default-4: #e5e7eb;
+  --color-bg-inverse: #000;
+  --color-bg-inverse-2: #1f2937;
+  --color-bg-inverse-3: #4b5563;
+  --color-bg-inverse-4: #9ca3af;
+  --color-bg-primary: #2563eb;
+  --color-bg-primary-2: #60a5fa;
+  --color-bg-secondary: #16a34a;
+  --color-bg-secondary-2: #4ade80;
+  --color-bg-error: #fef2f2;
+  --color-bg-error-2: #fee2e2;
+
+  --color-border-default: #d1d5db;
+  --color-border-default-2: #e5e7eb;
+  --color-border-default-3: #f3f4f6;
+  --color-border-default-4: #f9fafb;
+  --color-border-darker: #9ca3af;
+  --color-border-darker-2: #6b7280;
+  --color-border-darker-3: #4b5563;
+  --color-border-inverse: #fff;
+  --color-border-primary: #2563eb;
+  --color-border-primary-2: #60a5fa;
+  --color-border-secondary: #16a34a;
+  --color-border-secondary-2: #4ade80;
+  --color-border-error: #dc2626;
+  --color-border-error-2: #f87171;
+
+  --font-body: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-heading: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-code:  ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
