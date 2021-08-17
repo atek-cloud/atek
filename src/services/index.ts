@@ -1,15 +1,18 @@
 import { ServiceInstance } from './instance.js'
 // import * as db from '../db/index.js' TODO
 import * as git from '../lib/git.js'
-import { fileURLToPath } from 'url'
+import { URL, fileURLToPath } from 'url'
 import * as path from 'path'
 import { promises as fsp } from 'fs'
 import { Config } from '../lib/config.js'
 import lock from '../lib/lock.js'
 import { getAvailableId, getAvailablePort } from './util.js'
 import { createValidator } from '../schemas/util.js'
-import * as schemas from '../schemas/index.js'
-import * as atekService from '../gen/atek.cloud/service'
+import AtekService, {SourceTypeEnum} from '../gen/atek.cloud/service.js'
+import { HyperServiceInstance } from '../hyper/service.js'
+
+const INSTALL_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
+const INSTALL_ADB_PATH = path.join(INSTALL_PATH, 'adb')
 
 const manifestValidator = createValidator({
   type: 'object',
@@ -66,17 +69,56 @@ const services = new Map<string, ServiceInstance>()
 // =
 
 export async function setup (): Promise<void> {
-  const srvRecords = []// await db.privateServerDb.apps.list() TODO
+}
+
+export async function loadCoreServices (): Promise<void> {
+  const cfg = Config.getActiveConfig()
+  services.set('core.hyper', new HyperServiceInstance({
+    id: 'core.hyper',
+    port: 0,
+    sourceUrl: new URL('https://atek.cloud'), // TODO
+    package: {
+      sourceType: SourceTypeEnum.file
+    },
+    system: {appPort: 0},
+    installedBy: 'system'
+  }, {
+    SIMULATE_HYPERSPACE: cfg?.simulateHyperspace ? '1' : '',
+    HYPERSPACE_HOST: cfg?.hyperspaceHost,
+    HYPERSPACE_STORAGE: cfg?.hyperspaceStorage
+  }))
+  await services.get('core.hyper')?.setup()
+  await services.get('core.hyper')?.start()
+
+  await load({
+    id: 'core.adb',
+    port: 0,
+    sourceUrl: new URL(`file://${INSTALL_ADB_PATH}`),
+    package: {
+      sourceType: SourceTypeEnum.file
+    },
+    system: {appPort: 12345}, // TODO
+    installedBy: 'system'
+  })
+  await services.get('core.adb')?.start()
+
+  // TODO load the adb service with the configured hostdb
+}
+
+/*export async function loadUserServices (): Promise<void> {
+  // TODO
+  const srvRecords = await db.privateServerDb.apps.list()
   for (let srvRecord of srvRecords) {
     await load(srvRecord.value)
   }
 }
 
-export async function install (params: InstallParams, authedUsername: string): Promise<atekService.Service> {
+export async function install (params: InstallParams, authedUsername: string): Promise<AtekService> {
+  // TODO
   if (!params.sourceUrl) {
     throw new Error('Source URL is required')
   }
-  if (params.id && false /* TODO await db.privateServerDb.apps.get(params.id)*/) {
+  if (params.id && await db.privateServerDb.apps.get(params.id)) {
     throw new Error('App already exists under the name: ' + params.id)
   }
 
@@ -121,13 +163,14 @@ export async function install (params: InstallParams, authedUsername: string): P
     },
     installedBy: authedUsername
   }
-  // await db.privateServerDb.apps.put(params.id, recordValue) TODO
+  await db.privateServerDb.apps.put(params.id, recordValue)
   await load(recordValue)
   return recordValue
 }
 
 export async function updateConfig (id: string, params: UpdateParams): Promise<void> {
-  const record = undefined// TODO await db.privateServerDb.apps.get(id)
+  // TODO
+  const record = await db.privateServerDb.apps.get(id)
   if (!record) {
     throw new Error(`App ${id} not found`)
   }
@@ -136,14 +179,15 @@ export async function updateConfig (id: string, params: UpdateParams): Promise<v
   record.value.sourceUrl = ('sourceUrl' in params) ? params.sourceUrl : record.value.sourceUrl
   record.value.desiredVersion = ('desiredVersion' in params) ? params.desiredVersion : record.value.desiredVersion
 
-  // await db.privateServerDb.apps.put(id, record.value) TODO
+  await db.privateServerDb.apps.put(id, record.value)
   get(id).settings = record.value
 }
 
 export async function uninstall (id: string): Promise<void> {
+  // TODO
   const release = await lock(`services:${id}:ctrl`)
   try {
-    const record = undefined// TODO await db.privateServerDb.apps.get(id)
+    const record = await db.privateServerDb.apps.get(id)
     if (!record) {
       throw new Error(`App ${id} not found`)
     }
@@ -152,21 +196,24 @@ export async function uninstall (id: string): Promise<void> {
     if (record.value.package.sourceType === 'git') {
       await fsp.rm(Config.getActiveConfig().packageInstallPath(id), {recursive: true})
     }
-    // await db.privateServerDb.apps.del(id) TODO
+    await db.privateServerDb.apps.del(id)
     services.delete(id)
   } finally {
     release
   }
-}
+}*/
 
-export async function load (settings: atekService.Service): Promise<ServiceInstance> {
+export async function load (settings: AtekService): Promise<ServiceInstance| undefined> {
   const id = settings.id
   const release = await lock(`services:${id}:ctrl`)
   try {
     if (!services.has(id)) {
       services.set(id, new ServiceInstance(settings))
-      await loadSchemas(settings.manifest)
-      await services.get(id).setup()
+      if (settings.manifest) {
+        // TODO needed?
+        // await loadSchemas(settings.manifest)
+      }
+      await services.get(id)?.setup()
     }
     return services.get(id)
   } finally {
@@ -174,7 +221,7 @@ export async function load (settings: atekService.Service): Promise<ServiceInsta
   }
 }
 
-export function get (id): ServiceInstance {
+export function get (id: string): ServiceInstance | undefined {
   return services.get(id)
 }
 
@@ -182,18 +229,20 @@ export function list (): ServiceInstance[] {
   return Array.from(services.values())
 }
 
-export function getByBearerToken (bearerToken: string): ServiceInstance {
+export function getByBearerToken (bearerToken: string): ServiceInstance | undefined {
   return list().find(app => app.bearerToken === bearerToken)
 }
 
 export function stopAll (): void {
-  for (let id in services) {
-    get(id).stop()
+  for (const id in services) {
+    get(id)?.stop()
   }
 }
 
-export async function checkForPackageUpdates (id: string): Promise<object> { // TODO
-  const record = undefined// TODO await db.privateServerDb.apps.get(id)
+/*
+export async function checkForPackageUpdates (id: string): Promise<object> {
+  // TODO
+  const record = await db.privateServerDb.apps.get(id)
   if (!record) {
     throw new Error(`App ${id} not found`)
   }
@@ -206,8 +255,9 @@ export async function checkForPackageUpdates (id: string): Promise<object> { // 
   }
 }
 
-export async function updatePackage (id: string): Promise<object> { // TODO
-  const record = undefined// TODO await db.privateServerDb.apps.get(id)
+export async function updatePackage (id: string): Promise<object> {
+  // TODO
+  const record = await db.privateServerDb.apps.get(id)
   if (!record) {
     throw new Error(`App ${id} not found`)
   }
@@ -225,11 +275,11 @@ export async function updatePackage (id: string): Promise<object> { // TODO
   const oldVersion = record.value.package.installedVersion
   record.value.manifest = manifest
   record.value.package.installedVersion = latestVersion
-  // await db.privateServerDb.apps.put(id, record.value) TODO
+  await db.privateServerDb.apps.put(id, record.value)
   get(id).settings = record.value
 
   return {installedVersion: latestVersion, oldVersion}
-}
+}*/
 
 export function getInstallPath (id: string, sourceUrl: string): string {
   if (sourceUrl.startsWith('file://')) {
@@ -242,7 +292,7 @@ export function getInstallPath (id: string, sourceUrl: string): string {
 // internal methods
 // =
 
-async function readManifestFile (id: string, sourceUrl: string): Promise<ServiceManifest> {
+async function readManifestFile (id: string, sourceUrl: string): Promise<ServiceManifest | undefined> {
   try {
     const installPath = getInstallPath(id, sourceUrl)
     const obj = JSON.parse(await fsp.readFile(path.join(installPath, 'app.json'), 'utf8'))
@@ -251,6 +301,7 @@ async function readManifestFile (id: string, sourceUrl: string): Promise<Service
   } catch (e) {
     console.error(`No valid app.json manifest file found for`, sourceUrl)
     console.error(e)
+    return undefined
   }
 }
 
@@ -258,17 +309,26 @@ function assertIsManifest (obj: any): asserts obj is ServiceManifest {
   manifestValidator.assert(obj)
 }
 
+/*
 async function loadSchemas (manifest: ServiceManifest): Promise<void> {
   if (!manifest?.protocols?.tables?.length) {
     return
   }
-  for (let table of manifest.protocols.tables) {
+  for (const table of manifest.protocols.tables) {
     let domain, name, minRevision
     try {
-      ;({domain, name, minRevision} = /(?<domain>.+)\/(?<name>[^@]+)(@(?<minRevision>[\d]+))?/.exec(table)?.groups)
+      const groups = /(?<domain>.+)\/(?<name>[^@]+)(@(?<minRevision>[\d]+))?/.exec(table)?.groups
+      if (groups) {
+        domain = groups.domain
+        name = groups.name
+        minRevision = groups.minRevision
+      }
     } catch (e) {
       throw new Error(`Invalid protocols.tables specifier: ${table}. Must be of shape {domain}/{name}@{minRevision}`)
     }
-    await schemas.load(domain, name, Number(minRevision))
+    if (domain && name) {
+      await schemas.load(domain, name, Number(minRevision))
+    }
   }
 }
+*/

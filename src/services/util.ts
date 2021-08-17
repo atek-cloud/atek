@@ -1,12 +1,20 @@
 import path from 'path'
 import getPort from 'get-port'
+import { URL } from 'url'
 // import * as db from '../db/index.js' TODO
 import lock from '../lib/lock.js'
+
+interface TODO {
+  key: string
+  value: {
+    port: number
+  }
+}
 
 export async function getAvailableId (sourceUrl: string): Promise<string> {
   const release = await lock('service:get-available-id')
   try {
-    const srvRecords = []//await db.privateServerDb.apps.list() TODO
+    const srvRecords: TODO[] = []//await db.privateServerDb.apps.list() TODO
     const urlp = new URL(sourceUrl)
     const pathname = urlp.pathname
     const basename = path.basename(pathname) || 'app'
@@ -26,9 +34,9 @@ export async function getAvailableId (sourceUrl: string): Promise<string> {
 export async function getAvailablePort (): Promise<number> {
   const release = await lock('service:get-available-port')
   try {
-    const srvRecords = []//await db.privateServerDb.apps.list() TODO
+    const srvRecords: TODO[] = []//await db.privateServerDb.apps.list() TODO
     for (let i = 1; i < 1e9; i++) {
-      let port = await getPort()
+      const port = await getPort()
       if (!srvRecords.find(r => r.value.port == port)) {
         return port
       }

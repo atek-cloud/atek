@@ -2,7 +2,7 @@ export class ExtendableError extends Error {
   code: string
   rpcCode: number
 
-  constructor(msg) {
+  constructor (msg: string) {
     super(msg)
     this.name = this.constructor.name
     this.message = msg
@@ -17,7 +17,7 @@ export class ExtendableError extends Error {
 }
 
 export class SessionError extends ExtendableError {
-  constructor(msg) {
+  constructor (msg: string) {
     super(msg || 'Must be logged in')
     this.code = 'session-does-not-exist'
     this.rpcCode = -32001
@@ -25,21 +25,15 @@ export class SessionError extends ExtendableError {
 }
 
 export class ValidationError extends ExtendableError {
-  constructor(msg) {
-    super(validationGenMsg(msg))
+  constructor (msg: string) {
+    super(msg)
     this.code = 'validation-failed'
     this.rpcCode = -32002
   }
 }
-const validationGenMsg = msg => {
-  if (msg && typeof msg === 'object') {
-    return `${msg.dataPath} ${msg.message}`
-  }
-  return msg || ''
-}
 
 export class NotFoundError extends ExtendableError {
-  constructor(msg) {
+  constructor (msg: string) {
     super(msg || 'Not found')
     this.code = 'not-found'
     this.rpcCode = -32003
@@ -47,7 +41,7 @@ export class NotFoundError extends ExtendableError {
 }
 
 export class PermissionsError extends ExtendableError {
-  constructor(msg) {
+  constructor (msg: string) {
     super(msg || 'Not authorized to complete this action')
     this.code = 'not-authorized'
     this.rpcCode = -32004
@@ -55,7 +49,7 @@ export class PermissionsError extends ExtendableError {
 }
 
 export class InvalidCredentialsError extends ExtendableError {
-  constructor(msg) {
+  constructor (msg: string) {
     super(msg || 'Invalid username or password')
     this.code = 'invalid-credentials'
     this.rpcCode = -32005
@@ -63,7 +57,7 @@ export class InvalidCredentialsError extends ExtendableError {
 }
 
 export class ConfigurationError extends ExtendableError {
-  constructor(msg) {
+  constructor (msg: string) {
     super(msg || 'Server or network configuration error')
     this.code = 'configuration-error'
     this.rpcCode = -32006
@@ -71,7 +65,7 @@ export class ConfigurationError extends ExtendableError {
 }
 
 export class RateLimitError extends ExtendableError {
-  constructor(msg) {
+  constructor (msg: string) {
     super(msg || 'Rate limit exceeded')
     this.code = 'rate-limit-exceeded'
     this.rpcCode = -32007
@@ -79,7 +73,7 @@ export class RateLimitError extends ExtendableError {
 }
 
 export class InvalidIdError extends ExtendableError {
-  constructor(msg) {
+  constructor (msg: string) {
     super(msg || 'Invalid id')
     this.code = 'invalid-id'
     this.rpcCode = -32008

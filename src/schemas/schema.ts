@@ -1,4 +1,4 @@
-import createMlts from 'monotonic-lexicographic-timestamp'
+/*import createMlts from 'monotonic-lexicographic-timestamp'
 import { JsonPointer } from 'json-ptr'
 import { ValidateFunction } from 'ajv'
 import { ValidationError } from '../lib/errors.js'
@@ -17,7 +17,7 @@ interface TemplateFunction {
 }
 
 interface ShellObject {
-  descTemplate: TemplateFunction
+  descTemplate?: TemplateFunction
 }
 
 export interface APDLSchema {
@@ -35,8 +35,8 @@ export interface APDLSchema {
 export class Schema {
   id: string
   schemaObject: APDLSchema
-  validate: ValidateFunction
-  keyTemplate: TemplateFunction
+  validate: ValidateFunction | undefined
+  keyTemplate: TemplateFunction | undefined
   shell: ShellObject
 
   constructor (obj: APDLSchema) {
@@ -48,7 +48,7 @@ export class Schema {
       descTemplate: undefined
     }
 
-    const failure = (msg, e) => {
+    const failure = (msg: string, e: Error) => {
       console.error(msg, this.id)
       console.error(e)
       process.exit(1)
@@ -109,8 +109,8 @@ export class Schema {
       this.schemaObject.type === 'adb-record'
       && this.schemaObject.definition
       && (
-        this.schemaObject.definition.properties?.createdAt
-        || this.schemaObject.definition.oneOf?.every?.(obj => obj.properties.createdAt)
+        this.schemaObject.definition?.properties?.createdAt
+        || this.schemaObject.definition?.oneOf?.every?.(obj => obj.properties.createdAt)
       )
     )
   }
@@ -173,4 +173,4 @@ function compileTemplateGeneratorInner (tmpl: TemplateDefinitionSegment[]): ((an
       throw new Error(`Unknown template segment type: "${segment.type}"`)
     }
   })
-}
+}*/

@@ -5,7 +5,7 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import { Config, ConfigValues } from './lib/config.js'
 // import * as db from './db/index.js' TODO
-// import * as apps from './apps/index.js' TODO
+import * as services from './services/index.js'
 import * as sessionMiddleware from './httpapi/session-middleware.js'
 // import * as perf from './lib/perf.js' TODO
 // import * as metrics from './lib/metrics.js' TODO
@@ -28,7 +28,7 @@ interface StartOpts extends ConfigValues {
 }
 
 export async function start (opts: StartOpts) {
-  const configDir = opts.configDir || path.join(os.homedir(), '.atx')
+  const configDir = opts.configDir || path.join(os.homedir(), '.atek')
   let config = new Config(configDir, opts)
   Config.setActiveConfig(config)
   // if (config.benchmarkMode) {
@@ -37,20 +37,18 @@ export async function start (opts: StartOpts) {
   // metrics.setup({configDir: opts.configDir}) TODO
   if (config.debugMode) console.log('Debug mode enabled')
 
-  // BOOTSTRAP TODO
   // initiate the services layer
-  // load the hyper service
-  // load the adb service with the configured hostdb
-  // load the "distro" services
-  // load user-configured services
-  
+  await services.setup()
+  await services.loadCoreServices()
+  // await services.loadUserServices() TODO
+
   const server = createServer(config)
 
   process.on('SIGINT', close)
   process.on('SIGTERM', close)
-  async function close () {
+  function close () {
     console.log('Shutting down, this may take a moment...')
-    // apps.stopAll() TODO
+    services.stopAll()
     server.close()
     process.exit(0)
   }
@@ -58,9 +56,9 @@ export async function start (opts: StartOpts) {
   _serverReadyCb(undefined)
   return {
     server,
-    close: async () => {
+    close: () => {
       console.log('Shutting down, this may take a moment...')
-      // apps.stopAll() TODO
+      services.stopAll()
       server.close()
     }
   }

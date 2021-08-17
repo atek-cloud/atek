@@ -15,6 +15,8 @@
     "@types/cors": "^2.8.12",
     "@types/express": "^4.17.13",
     "@types/node": "^16.6.0",
+    "@types/node-fetch": "^2.5.12",
+    "@types/semver": "^7.3.8",
     "@types/uuid": "^8.3.1",
     "typescript": "^4.3.5"
   },
@@ -35,6 +37,7 @@
     "monotonic-lexicographic-timestamp": "^1.0.0",
     "node-fetch": "^2.6.1",
     "pauls-sliding-window-rate-limiter": "^1.0.0",
+    "quick-lru": "^6.0.1",
     "random-access-memory": "^3.1.2",
     "semver": "^7.3.5",
     "subcommand": "^2.1.1",

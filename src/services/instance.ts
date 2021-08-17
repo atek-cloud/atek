@@ -7,22 +7,28 @@ import { Config } from '../lib/config.js'
 import { generateBearerToken } from '../lib/crypto.js'
 import lock from '../lib/lock.js'
 import fetch from 'node-fetch'
-import * as atekService from '../gen/atek.cloud/service'
+import AtekService, { ServiceManifest, ApiExportDesc } from '../gen/atek.cloud/service'
 
-const INSTALL_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
+const INSTALL_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const DENO_PATH = path.join(INSTALL_PATH, 'bin', 'deno')
 
 interface TODO {}
 
+export interface ServiceConfig {
+  [key: string]: string | undefined
+}
+
 export class ServiceInstance extends EventEmitter {
-  settings: atekService.Service
-  process: childProcess.ChildProcess
-  logFileStream: WriteStream
+  settings: AtekService
+  protected config: ServiceConfig
+  protected process: childProcess.ChildProcess | undefined
+  protected logFileStream: WriteStream | undefined
   bearerToken: string
 
-  constructor (settings: atekService.Service) {
+  constructor (settings: AtekService) {
     super()
     this.settings = settings
+    this.config = {}
     this.process = undefined
     this.logFileStream = undefined
     this.bearerToken = generateBearerToken()
@@ -36,23 +42,52 @@ export class ServiceInstance extends EventEmitter {
     return this.settings.id
   }
 
-  get scriptPath (): string {
-    if (this.settings.package.sourceType === 'file') {
-      const folderPath = fileURLToPath(this.settings.sourceUrl)
-      return path.join(folderPath, 'index.js')
-    }
-    if (this.settings.package.sourceType === 'git') {
-      const folderPath = Config.getActiveConfig().packageInstallPath(this.id)
-      return path.join(folderPath, 'index.js')
-    }
-    throw new Error('Unknown package source type: ' + this.settings.package.sourceType)
-  }
-
   get port (): number {
     return this.settings.port
   }
 
-  async lockServiceCtrl () {
+  get manifest (): ServiceManifest {
+    return this.settings.manifest || {}
+  }
+
+  get exportedApis (): ApiExportDesc[] {
+    return Array.isArray(this.manifest?.exports) ? this.manifest?.exports : []
+  }
+
+  setConfig (config: ServiceConfig) {
+    config = Object.assign({}, config)
+    for (const k in config) {
+      if (k.toUpperCase() !== k) {
+        const v = config[k]
+        config[k.toUpperCase()] = v
+        delete config[k]
+      }
+    }
+    this.config = config
+  }
+
+  getConfig (): ServiceConfig {
+    return this.config
+  }
+
+  getScriptPath (ext: string): string {
+    if (this.settings.package.sourceType === 'file') {
+      const folderPath = fileURLToPath(this.settings.sourceUrl)
+      return path.join(folderPath, `index.${ext}`)
+    }
+    if (this.settings.package.sourceType === 'git') {
+      const cfg = Config.getActiveConfig()
+      if (cfg) {
+        const folderPath = cfg.packageInstallPath(this.id)
+        return path.join(folderPath, `index.${ext}`)
+      } else {
+        throw new Error('No active configuration is set')
+      }
+    }
+    throw new Error('Unknown package source type: ' + this.settings.package.sourceType)
+  }
+
+  lockServiceCtrl () {
     return lock(`service:${this.id}:process-ctrl`)
   }
 
@@ -63,12 +98,15 @@ export class ServiceInstance extends EventEmitter {
     }
   }
 
-  log (str: string, tag: string = 'SYS') {
+  log (str: string, tag = 'SYS') {
     if (!this.logFileStream) {
-      this.logFileStream = createWriteStream(Config.getActiveConfig().serviceLogPath(this.id), {flags: 'a', encoding: 'utf8'})
+      const cfg = Config.getActiveConfig()
+      if (cfg) {
+        this.logFileStream = createWriteStream(cfg.serviceLogPath(this.id), {flags: 'a', encoding: 'utf8'})
+      }
     }
     console.log(`[${tag} ${this.id}] ${str.replace(/(\n)+$/g, '')}`)
-    this.logFileStream.write(`[${tag} ${(new Date()).toLocaleString()}] ${str}\n`)
+    this.logFileStream?.write(`[${tag} ${(new Date()).toLocaleString()}] ${str}\n`)
   }
 
   async setup (): Promise<void> {
@@ -80,29 +118,35 @@ export class ServiceInstance extends EventEmitter {
     const release = await this.lockServiceCtrl()
     try {
       if (this.process) return
-      try {
-        await fsp.stat(this.scriptPath)
-      } catch {
-        throw new Error('Package issue: index.js not found.')
+      const hostcfg = Config.getActiveConfig()
+      if (!hostcfg) throw new Error('No active host configuration set')
+
+      let scriptPath = ''
+      if (await fsp.stat(this.getScriptPath('ts')).catch(e => undefined)) {
+        scriptPath = this.getScriptPath('ts')
+      } else if (await fsp.stat(this.getScriptPath('js')).catch(e => undefined)) {
+        scriptPath = this.getScriptPath('js')
+      } else {
+        throw new Error('Package issue: index.js and index.ts not found.')
       }
       const args = [
         'run',
         `--location=http://${this.id}.localhost:${this.settings.port}`,
-        `--allow-net=0.0.0.0:${this.settings.port},localhost:${Config.getActiveConfig().port}`,
+        `--allow-net=0.0.0.0:${this.settings.port},localhost:${hostcfg.port}`,
         `--allow-env=SELF_ASSIGNED_PORT,SELF_HOST_PORT,SELF_HOST_BEARER_TOKEN`,
         '--reload', // TODO: more intelligent cache invalidation behavior (this is really only needed when remote imports are expected to change, ie when developing the host env api)
-        this.scriptPath
+        scriptPath
       ]
       const opts = {
-        env: {
+        env: Object.assign({}, this.config, {
           SELF_ASSIGNED_PORT: String(this.settings.port),
-          SELF_HOST_PORT: String(Config.getActiveConfig().port),
+          SELF_HOST_PORT: String(hostcfg.port),
           SELF_HOST_BEARER_TOKEN: this.bearerToken
-        } as NodeJS.ProcessEnv
+        }) as NodeJS.ProcessEnv
       }
       this.log('----------------------')
       this.log(`Starting service process ${this.id}`)
-      this.log(`  Path: ${this.scriptPath}`)
+      this.log(`  Path: ${scriptPath}`)
       this.log(`  External port: ${this.port}`)
       this.log(`  Call: deno ${args.join(' ')}`)
       this.log(`  Env: ${JSON.stringify(opts.env)}`)
@@ -114,8 +158,12 @@ export class ServiceInstance extends EventEmitter {
           this.process = undefined
           this.emit('stop')
         })
-      this.process.stdout.on('data', data => this.log(stripANSICodes(data.toString('utf8')), 'LOG'))
-      this.process.stderr.on('data', data => this.log(stripANSICodes(data.toString('utf8')), 'ERR'))
+      if (this.process.stdout) {
+        this.process.stdout.on('data', data => this.log(stripANSICodes(data.toString('utf8')), 'LOG'))
+      }
+      if (this.process.stderr) {
+        this.process.stderr.on('data', data => this.log(stripANSICodes(data.toString('utf8')), 'ERR'))
+      }
       await this.awaitServerActive()
       this.emit('start')
     } finally {
@@ -157,9 +205,11 @@ export class ServiceInstance extends EventEmitter {
     return false
   }
 
-  async handleCall (callDesc: TODO, methodName: string, params: any[]): Promise<any> {
-    // TODO
-  }
+  // async handleCall (callDesc: TODO, methodName: string, params: any[]): Promise<any> {
+  //   const apiDesc = this.exportedApis.find(apiDesc => apiDesc.api === callDesc.api)
+  //   if (!apiDesc) throw new TodoError('API not found')
+  //   // TODO: json-rpc to the service
+  // }
 }
 
 const ANSI_REGEX = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g

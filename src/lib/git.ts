@@ -31,7 +31,9 @@ export async function checkout (id: string, version: string): Promise<void> {
 export async function listVersions (id: string): Promise<string[]> {
   const dir = Config.getActiveConfig().packageInstallPath(id)
   const tags = await git.listTags({fs, dir})
-  return tags.map(tag => semver.valid(semver.coerce(tag))).filter(tag => typeof tag === 'string')
+  return tags
+    .map((tag: string) => semver.valid(semver.coerce(tag)))
+    .filter(tag => typeof tag === 'string') as string[]
 }
 
 export async function getLatestVersion (id: string, spec: string): Promise<string> {

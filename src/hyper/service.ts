@@ -1,12 +1,14 @@
 import {
   Client as HyperspaceClient,
-  Server as HyperspaceServer
+  Server as HyperspaceServer,
+  RemoteHypercore
 } from 'hyperspace'
+import QuickLRU from 'quick-lru'
 import { EventEmitter } from 'events'
 import dht from '@hyperswarm/dht'
 import ram from 'random-access-memory'
-import { ServiceInstance } from '../services/instance.js'
-import AtekService from '../gen/atek.cloud/service.js'
+import { ServiceInstance, ServiceConfig } from '../services/instance.js'
+import AtekService, { ServiceManifest } from '../gen/atek.cloud/service.js'
 import HypercoreApiServer from '../gen/atek.cloud/hypercore-api.server.js'
 import {
   CreateResponse,
@@ -17,6 +19,7 @@ import {
   SeekResponse,
   ConfigureNetworkOptions
 } from '../gen/atek.cloud/hypercore-api.js'
+import * as apiBroker from '@atek-cloud/api-broker'
 
 interface APIs {
   hyper: HypercoreApiServer
@@ -33,21 +36,24 @@ export class HyperServiceInstance extends ServiceInstance {
   client?: HyperspaceClient
   dht?: HyperDHT
   apis: APIs
+  hypers: QuickLRU<string, RemoteHypercore>
 
-  constructor (settings: AtekService) {
+  constructor (settings: AtekService, config: ServiceConfig) {
     super(settings)
+    this.setConfig(config)
     this.apis = {
       hyper: this.createHyperApi()
     }
+    this.hypers = new QuickLRU({maxSize: 1000})
   }
 
-  getManifest () {
+  get manifest (): ServiceManifest {
     return {
-      title: 'Hyperspace',
+      name: 'Hyperspace',
       description: 'The hypercore protocol service',
       license: 'MIT',
       exports: [
-        {api: 'atek.cloud/hypercore'}
+        {api: 'atek.cloud/hypercore-api'}
       ]
     }
   }
@@ -63,22 +69,19 @@ export class HyperServiceInstance extends ServiceInstance {
       this.log(`  Path: <internal>`)
       this.log('----------------------')
 
-      // TODO config solution
-      const simulateHyperspace = false
-      const hyperspaceHost = undefined
-      const hyperspaceStorage = undefined
-
-      // TODO register API
+      const simulateHyperspace = this.config.SIMULATE_HYPERSPACE
+      const hyperspaceHost = this.config.HYPERSPACE_HOST
+      const hyperspaceStorage = this.config.HYPERSPACE_STORAGE
       
       if (simulateHyperspace) {
-        this.dht = dht({
+        const dhtInst = this.dht = dht({
           bootstrap: false
         })
-        this.dht.listen()
+        dhtInst.listen()
         await new Promise(resolve => {
-          return this.dht.once('listening', resolve)
+          return dhtInst.once('listening', resolve)
         })
-        const bootstrapPort = this.dht.address().port
+        const bootstrapPort = dhtInst.address().port
         const bootstrapOpt = [`localhost:${bootstrapPort}}`]
 
         const simulatorId = `hyperspace-simulator-${process.pid}`
@@ -107,7 +110,9 @@ export class HyperServiceInstance extends ServiceInstance {
         }
 
         this.log('Hyperspace daemon connected, status:')
-        this.log(await this.client.status())
+        this.log(JSON.stringify(await this.client.status()))
+
+        apiBroker.registerProvider(this, 'atek.cloud/hypercore-api')
       }
       this.emit('start')
     } finally {
@@ -119,6 +124,7 @@ export class HyperServiceInstance extends ServiceInstance {
     this.log('Stop() triggered')
     const release = await this.lockServiceCtrl()
     try {
+      apiBroker.unregisterProvider(this, 'atek.cloud/hypercore-api')
       if (this.client) await this.client.close()
       if (this.server) {
         this.log('Shutting down Hyperspace, this may take a few seconds...')
@@ -133,38 +139,66 @@ export class HyperServiceInstance extends ServiceInstance {
     }
   }
 
+  handleCall (callDesc: apiBroker.CallDescription, methodName: string, params: unknown[]): Promise<unknown> {
+    if (callDesc.api === 'atek.cloud/hypercore-api') {
+      return this.apis.hyper.handle(callDesc, methodName, params)
+    }
+    throw new apiBroker.ServiceNotFound('API not found')
+  }
+
   createHyperApi () {
+    const getCore = (key: Uint8Array): RemoteHypercore => {
+      if (!key) throw new Error('Hypercore key is required')
+      const keyBuf = Buffer.from(key)
+      if (keyBuf.byteLength !== 32) throw new Error('Hypercore key must be 32-bytes')
+
+      if (!this.client) throw new Error('Hypercore service not active')
+
+      const keyStr = keyBuf.toString('hex')
+      if (!this.hypers.has(keyStr)) {
+        this.hypers.set(keyStr, this.client.corestore().get(keyBuf))
+      }
+      const core = this.hypers.get(keyStr)
+      if (!core) throw new Error('Failed to get core')
+      return core
+    }
+
+    const self = this
     return new HypercoreApiServer({
-      create (): Promise<CreateResponse> {
-        // TODO
-        return Promise.resolve({
-          key: new Uint8Array(),
-          discoveryKey: new Uint8Array(),
-          writable: false,
-          length: 0,
-          byteLength: 0
-        })
+      async create (): Promise<CreateResponse> {
+        if (!self.client) throw new Error('Hypercore service not active')
+        // @ts-ignore For some reason, my TS declarations don't like this line
+        const core = self.client.corestore().get(undefined)
+        await core.ready()
+        return {
+          key: core.key,
+          discoveryKey: core.discoveryKey,
+          writable: core.writable,
+          length: core.length,
+          byteLength: core.byteLength
+        }
       },
   
-      describe (key: Uint8Array): Promise<DescribeResponse> {
-        // TODO
-        return Promise.resolve({
-          key,
-          discoveryKey: new Uint8Array(),
-          writable: false,
-          length: 0,
-          byteLength: 0
-        })
+      async describe (key: Uint8Array): Promise<DescribeResponse> {
+        const core = getCore(key)
+        await core.ready()
+        return {
+          key: core.key,
+          discoveryKey: core.discoveryKey,
+          writable: core.writable,
+          length: core.length,
+          byteLength: core.byteLength
+        }
       },
       
       append (key: Uint8Array, data: Uint8Array | Uint8Array[]): Promise<number> {
-        // TODO
-        return Promise.resolve(0)
+        const core = getCore(key)
+        return core.append(Array.isArray(data) ? data.map(d => Buffer.from(d)) : Buffer.from(data))
       },
       
       get (key: Uint8Array, index: number, options: GetOptions): Promise<Uint8Array> {
-        // TODO
-        return Promise.resolve(new Uint8Array())
+        const core = getCore(key)
+        return core.get(index, options)
       },
       
       cancel (key: Uint8Array, getCallId: number): Promise<void> {
@@ -173,13 +207,13 @@ export class HyperServiceInstance extends ServiceInstance {
       },
       
       has (key: Uint8Array, index: number): Promise<boolean> {
-        // TODO
-        return Promise.resolve(false)
+        const core = getCore(key)
+        return core.has(index)
       },
       
       download (key: Uint8Array, start: number, end: number, options: DownloadOptions): Promise<void> {
-        // TODO
-        return Promise.resolve(undefined)
+        const core = getCore(key)
+        return core.download(start, end)
       },
       
       undownload (key: Uint8Array, downloadCallId: number): Promise<void> {
@@ -188,26 +222,24 @@ export class HyperServiceInstance extends ServiceInstance {
       },
       
       downloaded (key: Uint8Array, start: number, end: number): Promise<number> {
-        // TODO
-        return Promise.resolve(0)
+        const core = getCore(key)
+        return core.downloaded(start, end)
       },
       
       update (key: Uint8Array, opts: UpdateOptions): Promise<void> {
-        // TODO
-        return Promise.resolve(undefined)
+        const core = getCore(key)
+        return core.update(opts)
       },
       
       seek (key: Uint8Array, byteOffset: number): Promise<SeekResponse> {
-        // TODO
-        return Promise.resolve({
-          index: 0,
-          relativeOffset: 0
-        })
+        const core = getCore(key)
+        return core.seek(byteOffset)
       },
       
       configureNetwork (key: Uint8Array, opts: ConfigureNetworkOptions): Promise<void> {
-        // TODO
-        return Promise.resolve(undefined)
+        const core = getCore(key)
+        // @ts-ignore For some reason, my TS declarations don't like this line
+        return this.client.network.configure(core, opts)
       }
     })
   }

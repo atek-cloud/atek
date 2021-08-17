@@ -23,7 +23,8 @@ export class Config implements ConfigValues {
     _activeConfig = cfg
   }
 
-  static getActiveConfig (): Config | undefined {
+  static getActiveConfig (): Config {
+    if (!_activeConfig) throw new Error('No active host environment config set')
     return _activeConfig
   }
 

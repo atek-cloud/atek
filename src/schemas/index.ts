@@ -1,4 +1,4 @@
-import path from 'path'
+/*import path from 'path'
 import { promises as fsp } from 'fs'
 import { fileURLToPath } from 'url'
 import fetch from 'node-fetch'
@@ -7,12 +7,12 @@ import { Config } from '../lib/config.js'
 import { createValidator } from './util.js'
 
 const SYSTEM_SCHEMAS = [
-  'ctzn.network/account',
-  'ctzn.network/account-session',
-  'ctzn.network/app-profile-session',
-  'ctzn.network/application',
-  'ctzn.network/database',
-  'ctzn.network/index-state'
+  'atek.cloud/account',
+  'atek.cloud/account-session',
+  'atek.cloud/app-profile-session',
+  'atek.cloud/application',
+  'atek.cloud/database',
+  'atek.cloud/index-state'
 ]
 
 const schemas = new Map<string, Schema>()
@@ -30,24 +30,26 @@ const schemaValidator = createValidator({
 // exported api
 // =
 
-export const getCached: (string) => Schema = schemas.get.bind(schemas)
+export const getCached: (id: string) => Schema | undefined = schemas.get.bind(schemas)
 
 export async function setup (): Promise<void> {
-  for (let systemSchema of SYSTEM_SCHEMAS) {
+  for (const systemSchema of SYSTEM_SCHEMAS) {
     const [domain, name] = systemSchema.split('/')
     await load(domain, name)
   }
 }
 
-export async function load (domain: string, name: string, minRevision = 1): Promise<Schema> {
+export async function load (domain: string, name: string, minRevision = 1): Promise<Schema | undefined> {
   const id = `${domain}/${name}`
 
-  if (schemas.get(id)?.rev >= minRevision) {
-    return schemas.get(id)
+  const cached = schemas.get(id)
+  if (cached && cached.rev >= minRevision) {
+    return cached
   }
 
   let obj = await readSchemaFile(domain, name)
-  if (!obj || !isSchemaValid(obj) || obj.rev < minRevision) {
+  let rev = obj && isSchemaValid(obj) && obj.rev ? obj.rev : 1
+  if (!obj || !isSchemaValid(obj) || rev < minRevision) {
     try {
       await downloadSchemaFile(domain, name)
     } catch (e) {
@@ -66,7 +68,8 @@ export async function load (domain: string, name: string, minRevision = 1): Prom
     throw e
   }
 
-  if (obj.rev < minRevision && minRevision !== 1) {
+  rev = (obj && isSchemaValid(obj) && obj.rev) ? obj.rev : 1
+  if (rev < minRevision && minRevision !== 1) {
     console.error(`Unable to find schema ${domain}/${name} that satisfies minimum revision ${minRevision}`)
     console.error(`Highest revision found: ${obj.rev}`)
     throw new Error(`Unable to find schema ${domain}/${name} that satisfies minimum revision ${minRevision}`)
@@ -79,9 +82,9 @@ export async function load (domain: string, name: string, minRevision = 1): Prom
 // internal methods
 // =
 
-async function readSchemaFile (domain: string, name: string): Promise<object> {
+async function readSchemaFile (domain: string, name: string): Promise<object | undefined> {
   try {
-    const installPath = (domain === 'ctzn.network' /* TEMP */)
+    const installPath = (domain === 'atek.cloud') // TEMP
       ? path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'schemas', `${name}.json`)
       : path.join(Config.getActiveConfig().schemaInstallPath(domain), `${name}.json`)
     const str = await fsp.readFile(installPath, 'utf8')
@@ -110,3 +113,4 @@ async function downloadSchemaFile (domain: string, name: string): Promise<void> 
   await fsp.mkdir(installFolderPath, {recursive: true})
   await fsp.writeFile(path.join(installFolderPath, `${name}.json`), JSON.stringify(obj, null, 2), 'utf8')
 }
+*/
