@@ -7,6 +7,7 @@ import { Config, ConfigValues } from './lib/config.js'
 // import * as db from './db/index.js' TODO
 import * as services from './services/index.js'
 import * as sessionMiddleware from './httpapi/session-middleware.js'
+import * as apiGatewayHttpApi from './httpapi/gateway.js'
 // import * as perf from './lib/perf.js' TODO
 // import * as metrics from './lib/metrics.js' TODO
 import * as path from 'path'
@@ -93,6 +94,7 @@ function createServer (config: Config) {
     next()
   })
 
+  apiGatewayHttpApi.setup(app)
   app.use('/_api', (req: express.Request, res: express.Response) => json404(res, 'Not found'))
   app.get('/', (req: express.Request, res: express.Response) => res.render('index'))
   app.get('/index', (req: express.Request, res: express.Response) => res.render('index'))
@@ -120,7 +122,7 @@ function createServer (config: Config) {
   })
 
   const server = new http.Server(app)
-  server.listen(config.port, () => {
+  server.listen(config.port, () => {    
     console.log(`Application server listening at http://localhost:${config.port}`)
   })
 

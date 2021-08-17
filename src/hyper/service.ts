@@ -10,6 +10,7 @@ import ram from 'random-access-memory'
 import { ServiceInstance, ServiceConfig } from '../services/instance.js'
 import AtekService, { ServiceManifest } from '../gen/atek.cloud/service.js'
 import HypercoreApiServer from '../gen/atek.cloud/hypercore-api.server.js'
+import PingApiServer from '../gen/atek.cloud/ping-api.server.js'
 import {
   CreateResponse,
   DescribeResponse,
@@ -23,6 +24,7 @@ import * as apiBroker from '@atek-cloud/api-broker'
 
 interface APIs {
   hyper: HypercoreApiServer
+  ping: PingApiServer
 }
 
 interface HyperDHT extends EventEmitter {
@@ -42,7 +44,13 @@ export class HyperServiceInstance extends ServiceInstance {
     super(settings)
     this.setConfig(config)
     this.apis = {
-      hyper: this.createHyperApi()
+      hyper: this.createHyperApi(),
+      ping: new PingApiServer({
+        ping (num: number): Promise<number> {
+          console.log('Hyper got ping', num)
+          return Promise.resolve(num)
+        }
+      })
     }
     this.hypers = new QuickLRU({maxSize: 1000})
   }
@@ -53,7 +61,8 @@ export class HyperServiceInstance extends ServiceInstance {
       description: 'The hypercore protocol service',
       license: 'MIT',
       exports: [
-        {api: 'atek.cloud/hypercore-api'}
+        {api: 'atek.cloud/hypercore-api'},
+        {api: 'atek.cloud/ping-api'}
       ]
     }
   }
@@ -113,6 +122,7 @@ export class HyperServiceInstance extends ServiceInstance {
         this.log(JSON.stringify(await this.client.status()))
 
         apiBroker.registerProvider(this, 'atek.cloud/hypercore-api')
+        apiBroker.registerProvider(this, 'atek.cloud/ping-api')
       }
       this.emit('start')
     } finally {
@@ -142,6 +152,9 @@ export class HyperServiceInstance extends ServiceInstance {
   handleCall (callDesc: apiBroker.CallDescription, methodName: string, params: unknown[]): Promise<unknown> {
     if (callDesc.api === 'atek.cloud/hypercore-api') {
       return this.apis.hyper.handle(callDesc, methodName, params)
+    }
+    if (callDesc.api === 'atek.cloud/ping-api') {
+      return this.apis.ping.handle(callDesc, methodName, params)
     }
     throw new apiBroker.ServiceNotFound('API not found')
   }

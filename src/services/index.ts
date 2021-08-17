@@ -92,7 +92,7 @@ export async function loadCoreServices (): Promise<void> {
 
   await load({
     id: 'core.adb',
-    port: 0,
+    port: 12345, // TODO
     sourceUrl: new URL(`file://${INSTALL_ADB_PATH}`),
     package: {
       sourceType: SourceTypeEnum.file

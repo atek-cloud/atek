@@ -33,6 +33,7 @@
     "hyperspace": "^3.19.0",
     "isomorphic-git": "^1.9.2",
     "json-ptr": "^2.2.0",
+    "jsonrpc-lite": "^2.2.0",
     "liquidjs": "^9.25.1",
     "monotonic-lexicographic-timestamp": "^1.0.0",
     "node-fetch": "^2.6.1",
