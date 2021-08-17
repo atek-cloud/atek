@@ -1,6 +1,8 @@
 import { RateLimiter } from 'pauls-sliding-window-rate-limiter'
 import * as http from 'http'
+import { Socket } from 'net'
 import createExpressApp, * as express from 'express'
+import WebSocket, * as ws from 'ws'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import { Config, ConfigValues } from './lib/config.js'
@@ -28,6 +30,11 @@ interface StartOpts extends ConfigValues {
   configDir: string
 }
 
+declare module 'ws' {
+  // HACK temporary workaround for the 'ws' module having bad types, should be fixed soon -prf
+  class WebSocketServer extends ws.Server {}
+}
+
 export async function start (opts: StartOpts) {
   const configDir = opts.configDir || path.join(os.homedir(), '.atek')
   let config = new Config(configDir, opts)
@@ -38,12 +45,12 @@ export async function start (opts: StartOpts) {
   // metrics.setup({configDir: opts.configDir}) TODO
   if (config.debugMode) console.log('Debug mode enabled')
 
+  const server = createServer(config)
+
   // initiate the services layer
   await services.setup()
   await services.loadCoreServices()
   // await services.loadUserServices() TODO
-
-  const server = createServer(config)
 
   process.on('SIGINT', close)
   process.on('SIGTERM', close)
@@ -121,9 +128,23 @@ function createServer (config: Config) {
     res.status(404).send('404 Page not found')
   })
 
+  const wsServer = new ws.WebSocketServer({ noServer: true })
+  wsServer.on('connection', (socket: WebSocket, req: http.IncomingMessage) => {
+    if (/\/_api\/gateway(\?|\/$|$)/.test(req.url || '/')) {
+      apiGatewayHttpApi.handleWebSocket(socket, req)
+    } else {
+      socket.close()
+    }
+  })
+
   const server = new http.Server(app)
   server.listen(config.port, () => {    
     console.log(`Application server listening at http://localhost:${config.port}`)
+  })
+  server.on('upgrade', (request: http.IncomingMessage, socket, head) => {
+    wsServer.handleUpgrade(request, (socket as Socket), head, socket => {
+      wsServer.emit('connection', socket, request)
+    })
   })
 
   return server

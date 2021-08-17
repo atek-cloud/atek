@@ -21,7 +21,9 @@
     "typescript": "^4.3.5"
   },
   "dependencies": {
+    "@hyperspace/rpc": "^1.15.1",
     "@hyperswarm/dht": "^4.0.1",
+    "@types/ws": "^7.4.7",
     "ajv": "^8.6.2",
     "ajv-formats": "^2.1.0",
     "await-lock": "^2.1.0",
@@ -42,6 +44,7 @@
     "random-access-memory": "^3.1.2",
     "semver": "^7.3.5",
     "subcommand": "^2.1.1",
-    "uuid": "^8.3.2"
+    "uuid": "^8.3.2",
+    "ws": "^8.1.0"
   }
 }

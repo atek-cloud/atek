@@ -205,7 +205,7 @@ export class ServiceInstance extends EventEmitter {
     return false
   }
 
-  // async handleCall (callDesc: TODO, methodName: string, params: any[]): Promise<any> {
+  // async handleRpc (callDesc: TODO, methodName: string, params: any[]): Promise<any> {
   //   const apiDesc = this.exportedApis.find(apiDesc => apiDesc.api === callDesc.api)
   //   if (!apiDesc) throw new TodoError('API not found')
   //   // TODO: json-rpc to the service

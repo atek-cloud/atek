@@ -3,10 +3,14 @@ import {
   Server as HyperspaceServer,
   RemoteHypercore
 } from 'hyperspace'
+// @ts-ignore We dont need types for getNetworkOptions
+import getNetworkOptions from '@hyperspace/rpc/socket.js'
 import QuickLRU from 'quick-lru'
 import { EventEmitter } from 'events'
+import net from 'net'
 import dht from '@hyperswarm/dht'
 import ram from 'random-access-memory'
+import WebSocket, { createWebSocketStream } from 'ws'
 import { ServiceInstance, ServiceConfig } from '../services/instance.js'
 import AtekService, { ServiceManifest } from '../gen/atek.cloud/service.js'
 import HypercoreApiServer from '../gen/atek.cloud/hypercore-api.server.js'
@@ -67,6 +71,14 @@ export class HyperServiceInstance extends ServiceInstance {
     }
   }
 
+  get hyperspaceHost (): string | undefined {
+    if (this.config.SIMULATE_HYPERSPACE) {
+      return `hyperspace-simulator-${process.pid}`
+    } else {
+      return this.config.HYPERSPACE_HOST
+    }
+  }
+
   async start (): Promise<void> {
     this.log('Start() triggered')
     const release = await this.lockServiceCtrl()
@@ -79,7 +91,6 @@ export class HyperServiceInstance extends ServiceInstance {
       this.log('----------------------')
 
       const simulateHyperspace = this.config.SIMULATE_HYPERSPACE
-      const hyperspaceHost = this.config.HYPERSPACE_HOST
       const hyperspaceStorage = this.config.HYPERSPACE_STORAGE
       
       if (simulateHyperspace) {
@@ -93,10 +104,8 @@ export class HyperServiceInstance extends ServiceInstance {
         const bootstrapPort = dhtInst.address().port
         const bootstrapOpt = [`localhost:${bootstrapPort}}`]
 
-        const simulatorId = `hyperspace-simulator-${process.pid}`
-
         this.server = new HyperspaceServer({
-          host: simulatorId,
+          host: this.hyperspaceHost,
           storage: ram,
           network: {
             bootstrap: bootstrapOpt,
@@ -105,24 +114,25 @@ export class HyperServiceInstance extends ServiceInstance {
           noMigrate: true
         })
         await this.server.open()
-        this.client = new HyperspaceClient({host: simulatorId})
+        this.client = new HyperspaceClient({host: this.hyperspaceHost})
       } else {
         try {
-          this.client = new HyperspaceClient({host: hyperspaceHost})
+          this.client = new HyperspaceClient({host: this.hyperspaceHost})
           await this.client.ready()
         } catch (e) {
           // no daemon, start it in-process
-          this.server = new HyperspaceServer({host: hyperspaceHost, storage: hyperspaceStorage})
+          this.server = new HyperspaceServer({host: this.hyperspaceHost, storage: hyperspaceStorage})
           await this.server.ready()
-          this.client = new HyperspaceClient({host: hyperspaceHost})
+          this.client = new HyperspaceClient({host: this.hyperspaceHost})
           await this.client.ready()
         }
 
         this.log('Hyperspace daemon connected, status:')
         this.log(JSON.stringify(await this.client.status()))
 
-        apiBroker.registerProvider(this, 'atek.cloud/hypercore-api')
-        apiBroker.registerProvider(this, 'atek.cloud/ping-api')
+        apiBroker.registerProvider(this, apiBroker.TransportEnum.RPC, 'atek.cloud/hypercore-api')
+        apiBroker.registerProvider(this, apiBroker.TransportEnum.PROXY, 'atek.cloud/hypercore-api')
+        apiBroker.registerProvider(this, apiBroker.TransportEnum.RPC, 'atek.cloud/ping-api')
       }
       this.emit('start')
     } finally {
@@ -134,7 +144,7 @@ export class HyperServiceInstance extends ServiceInstance {
     this.log('Stop() triggered')
     const release = await this.lockServiceCtrl()
     try {
-      apiBroker.unregisterProvider(this, 'atek.cloud/hypercore-api')
+      apiBroker.unregisterProviderAll(this)
       if (this.client) await this.client.close()
       if (this.server) {
         this.log('Shutting down Hyperspace, this may take a few seconds...')
@@ -149,7 +159,7 @@ export class HyperServiceInstance extends ServiceInstance {
     }
   }
 
-  handleCall (callDesc: apiBroker.CallDescription, methodName: string, params: unknown[]): Promise<unknown> {
+  handleRpc (callDesc: apiBroker.CallDescription, methodName: string, params: unknown[]): Promise<unknown> {
     if (callDesc.api === 'atek.cloud/hypercore-api') {
       return this.apis.hyper.handle(callDesc, methodName, params)
     }
@@ -157,6 +167,16 @@ export class HyperServiceInstance extends ServiceInstance {
       return this.apis.ping.handle(callDesc, methodName, params)
     }
     throw new apiBroker.ServiceNotFound('API not found')
+  }
+
+  handleProxy (callDesc: apiBroker.CallDescription, socket: WebSocket) {
+    if (callDesc.api === 'atek.cloud/hypercore-api') {
+      const hypSocket = net.connect(getNetworkOptions({host: this.hyperspaceHost}))
+      const wsStream = createWebSocketStream(socket)
+      wsStream.pipe(hypSocket).pipe(wsStream)
+    } else {
+      throw new apiBroker.ServiceNotFound('API not found')
+    }
   }
 
   createHyperApi () {
