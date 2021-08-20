@@ -1,4 +1,4 @@
-import { ServiceInstance } from './instance.js'
+import { ServiceInstance, ServiceConfig } from './instance.js'
 // import * as db from '../db/index.js' TODO
 import * as git from '../lib/git.js'
 import { URL, fileURLToPath } from 'url'
@@ -8,7 +8,8 @@ import { Config } from '../lib/config.js'
 import lock from '../lib/lock.js'
 import { getAvailableId, getAvailablePort } from './util.js'
 import { createValidator } from '../schemas/util.js'
-import AtekService, {SourceTypeEnum} from '../gen/atek.cloud/service.js'
+import AtekService, { SourceTypeEnum, RuntimeEnum } from '../gen/atek.cloud/service.js'
+import AdbCtrlApi from '../gen/atek.cloud/adb-ctrl-api.js'
 import { HyperServiceInstance } from '../hyper/service.js'
 
 const INSTALL_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
@@ -64,6 +65,7 @@ interface ServiceManifest {
 // =
 
 const services = new Map<string, ServiceInstance>()
+const adbCtrlApi = new AdbCtrlApi()
 
 // exported api
 // =
@@ -97,10 +99,26 @@ export async function loadCoreServices (): Promise<void> {
     package: {
       sourceType: SourceTypeEnum.file
     },
+    manifest: {
+      runtime: RuntimeEnum.node,
+      "exports": [
+        {"api": "atek.cloud/adb-api", "path": "/_api/adb"},
+        {"api": "atek.cloud/adb-ctrl-api", "path": "/_api/adb-ctrl"}
+      ]
+    },
     system: {appPort: 12345}, // TODO
     installedBy: 'system'
+  }, {
+    ATEK_SERVER_DBID: cfg.serverDbId,
+    ATEK_SERVER_DB_CREATE_NEW: cfg.serverDbId ? '' : '1'
   })
   await services.get('core.adb')?.start()
+
+  const serverDbId = await adbCtrlApi.getServerDatabaseId()
+  if (!cfg.isOverridden('serverDbId') && cfg.serverDbId !== serverDbId) {
+    console.log('HOST: Created new server database, id:', serverDbId)
+    cfg.update({serverDbId})
+  }
 
   // TODO load the adb service with the configured hostdb
 }
@@ -203,12 +221,12 @@ export async function uninstall (id: string): Promise<void> {
   }
 }*/
 
-export async function load (settings: AtekService): Promise<ServiceInstance| undefined> {
+export async function load (settings: AtekService, config: ServiceConfig = {}): Promise<ServiceInstance| undefined> {
   const id = settings.id
   const release = await lock(`services:${id}:ctrl`)
   try {
     if (!services.has(id)) {
-      services.set(id, new ServiceInstance(settings))
+      services.set(id, new ServiceInstance(settings, config))
       if (settings.manifest) {
         // TODO needed?
         // await loadSchemas(settings.manifest)

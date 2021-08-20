@@ -5,12 +5,13 @@ import * as os from 'os'
 let _activeConfig: Config | undefined = undefined
 
 export interface ConfigValues {
-  domain: string | undefined
-  port: number | undefined
-  debugMode: boolean | undefined
-  simulateHyperspace: boolean | undefined
-  hyperspaceHost: string | undefined
-  hyperspaceStorage: string | undefined
+  domain?: string
+  port?: number
+  debugMode?: boolean
+  simulateHyperspace?: boolean
+  hyperspaceHost?: string
+  hyperspaceStorage?: string
+  serverDbId?: string
 }
 
 export class Config implements ConfigValues {
@@ -75,6 +76,14 @@ export class Config implements ConfigValues {
 
   get hyperspaceStorage () {
     return this.overrides.hyperspaceStorage || this.values.hyperspaceStorage || path.join(os.homedir(), '.hyperspace/storage')
+  }
+
+  get serverDbId () {
+    return this.overrides.serverDbId || this.values.serverDbId || undefined
+  }
+
+  isOverridden (key: string): boolean {
+    return (key in this.overrides)
   }
 
   read () {

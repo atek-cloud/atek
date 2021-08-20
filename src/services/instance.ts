@@ -5,18 +5,23 @@ import { promises as fsp, createWriteStream, WriteStream } from 'fs'
 import { fileURLToPath } from 'url'
 import { Config } from '../lib/config.js'
 import { generateBearerToken } from '../lib/crypto.js'
+import { joinPath } from '../lib/strings.js'
 import lock from '../lib/lock.js'
 import fetch from 'node-fetch'
-import AtekService, { ServiceManifest, ApiExportDesc } from '../gen/atek.cloud/service'
+import WebSocket from 'ws'
+import jsonrpc from 'jsonrpc-lite'
+import AtekService, { ServiceManifest, ApiExportDesc, RuntimeEnum } from '../gen/atek.cloud/service.js'
+import * as apiBroker from '@atek-cloud/api-broker'
 
 const INSTALL_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const DENO_PATH = path.join(INSTALL_PATH, 'bin', 'deno')
-
-interface TODO {}
+const NODE_PATH = process.execPath
 
 export interface ServiceConfig {
   [key: string]: string | undefined
 }
+
+let _id = 1 // json-rpc ID incrementer
 
 export class ServiceInstance extends EventEmitter {
   settings: AtekService
@@ -25,13 +30,14 @@ export class ServiceInstance extends EventEmitter {
   protected logFileStream: WriteStream | undefined
   bearerToken: string
 
-  constructor (settings: AtekService) {
+  constructor (settings: AtekService, config?: ServiceConfig) {
     super()
     this.settings = settings
     this.config = {}
     this.process = undefined
     this.logFileStream = undefined
     this.bearerToken = generateBearerToken()
+    if (config) this.setConfig(config)
   }
 
   get isActive (): boolean {
@@ -70,19 +76,14 @@ export class ServiceInstance extends EventEmitter {
     return this.config
   }
 
-  getScriptPath (ext: string): string {
+  getPackagePath (str: string): string {
     if (this.settings.package.sourceType === 'file') {
       const folderPath = fileURLToPath(this.settings.sourceUrl)
-      return path.join(folderPath, `index.${ext}`)
+      return path.join(folderPath, str)
     }
     if (this.settings.package.sourceType === 'git') {
-      const cfg = Config.getActiveConfig()
-      if (cfg) {
-        const folderPath = cfg.packageInstallPath(this.id)
-        return path.join(folderPath, `index.${ext}`)
-      } else {
-        throw new Error('No active configuration is set')
-      }
+      const folderPath = Config.getActiveConfig().packageInstallPath(this.id)
+      return path.join(folderPath, str)
     }
     throw new Error('Unknown package source type: ' + this.settings.package.sourceType)
   }
@@ -118,40 +119,15 @@ export class ServiceInstance extends EventEmitter {
     const release = await this.lockServiceCtrl()
     try {
       if (this.process) return
-      const hostcfg = Config.getActiveConfig()
-      if (!hostcfg) throw new Error('No active host configuration set')
 
-      let scriptPath = ''
-      if (await fsp.stat(this.getScriptPath('ts')).catch(e => undefined)) {
-        scriptPath = this.getScriptPath('ts')
-      } else if (await fsp.stat(this.getScriptPath('js')).catch(e => undefined)) {
-        scriptPath = this.getScriptPath('js')
+      if (this.manifest.runtime === RuntimeEnum.node) {
+        this.process = await this.startNodeProcess()
       } else {
-        throw new Error('Package issue: index.js and index.ts not found.')
+        this.process = await this.startDenoProcess()
       }
-      const args = [
-        'run',
-        `--location=http://${this.id}.localhost:${this.settings.port}`,
-        `--allow-net=0.0.0.0:${this.settings.port},localhost:${hostcfg.port}`,
-        `--allow-env=SELF_ASSIGNED_PORT,SELF_HOST_PORT,SELF_HOST_BEARER_TOKEN`,
-        '--reload', // TODO: more intelligent cache invalidation behavior (this is really only needed when remote imports are expected to change, ie when developing the host env api)
-        scriptPath
-      ]
-      const opts = {
-        env: Object.assign({}, this.config, {
-          SELF_ASSIGNED_PORT: String(this.settings.port),
-          SELF_HOST_PORT: String(hostcfg.port),
-          SELF_HOST_BEARER_TOKEN: this.bearerToken
-        }) as NodeJS.ProcessEnv
-      }
-      this.log('----------------------')
-      this.log(`Starting service process ${this.id}`)
-      this.log(`  Path: ${scriptPath}`)
-      this.log(`  External port: ${this.port}`)
-      this.log(`  Call: deno ${args.join(' ')}`)
-      this.log(`  Env: ${JSON.stringify(opts.env)}`)
-      this.log('----------------------')
-      this.process = childProcess.spawn(DENO_PATH, args, opts)
+      if (!this.process) throw new Error('Failed to start process')
+
+      this.process
         .on('error', (...args) => this.emit('error', ...args))
         .on('close', () => {
           this.log('Service process closed')
@@ -165,6 +141,12 @@ export class ServiceInstance extends EventEmitter {
         this.process.stderr.on('data', data => this.log(stripANSICodes(data.toString('utf8')), 'ERR'))
       }
       await this.awaitServerActive()
+
+      for (const apiDesc of this.exportedApis) {
+        // TODO register proxy
+        apiBroker.registerProvider(this, apiBroker.TransportEnum.RPC, apiDesc.api)
+      }
+
       this.emit('start')
     } finally {
       release()
@@ -175,6 +157,7 @@ export class ServiceInstance extends EventEmitter {
     this.log('Stop() triggered')
     const release = await this.lockServiceCtrl()
     try {
+      apiBroker.unregisterProviderAll(this)
       if (this.process) {
         let p = new Promise(r => {
           this.once('stop', r)
@@ -205,11 +188,111 @@ export class ServiceInstance extends EventEmitter {
     return false
   }
 
-  // async handleRpc (callDesc: TODO, methodName: string, params: any[]): Promise<any> {
-  //   const apiDesc = this.exportedApis.find(apiDesc => apiDesc.api === callDesc.api)
-  //   if (!apiDesc) throw new TodoError('API not found')
-  //   // TODO: json-rpc to the service
-  // }
+  async handleRpc (callDesc: apiBroker.CallDescription, methodName: string, params: unknown[]): Promise<unknown> {
+    const apiDesc = this.exportedApis.find(apiDesc => apiDesc.api === callDesc.api)
+    if (apiDesc) {
+      const path = apiDesc.path || '/'
+      const url = joinPath(`http://localhost:${this.port}`, path)
+      const responseBody = await (await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(jsonrpc.request(_id++, methodName, params))
+      })).json()
+      const parsed = jsonrpc.parseObject(responseBody)
+      if (parsed.type === 'error') {
+        throw parsed.payload.error
+      } else if (parsed.type === 'success') {
+        return parsed.payload.result
+      } else {
+        return undefined
+      }
+    }
+    throw new apiBroker.ServiceNotFound('API not found')
+  }
+
+  handleProxy (callDesc: apiBroker.CallDescription, socket: WebSocket) {
+    // TODO
+    // if (callDesc.api === 'atek.cloud/hypercore-api') {
+    //   const hypSocket = net.connect(getNetworkOptions({host: this.hyperspaceHost}))
+    //   const wsStream = createWebSocketStream(socket)
+    //   wsStream.pipe(hypSocket).pipe(wsStream)
+    // } else {
+    //   throw new apiBroker.ServiceNotFound('API not found')
+    // }
+  }
+
+  async startDenoProcess (): Promise<childProcess.ChildProcess> {
+    const hostcfg = Config.getActiveConfig()
+
+    let scriptPath = ''
+    if (await fsp.stat(this.getPackagePath('index.ts')).catch(e => undefined)) {
+      scriptPath = this.getPackagePath('index.ts')
+    } else if (await fsp.stat(this.getPackagePath('index.js')).catch(e => undefined)) {
+      scriptPath = this.getPackagePath('index.js')
+    } else {
+      throw new Error('Package issue: index.js and index.ts not found.')
+    }
+    const args = [
+      'run',
+      `--location=http://${this.id}.localhost:${this.settings.port}`,
+      `--allow-net=0.0.0.0:${this.settings.port},localhost:${hostcfg.port}`,
+      `--allow-env=ATEK_ASSIGNED_PORT,ATEK_HOST_PORT,ATEK_HOST_BEARER_TOKEN`,
+      '--reload', // TODO: more intelligent cache invalidation behavior (this is really only needed when remote imports are expected to change, ie when developing the host env api)
+      scriptPath
+    ]
+    const opts = {
+      env: Object.assign({}, this.config, {
+        ATEK_ASSIGNED_PORT: String(this.settings.port),
+        ATEK_HOST_PORT: String(hostcfg.port),
+        ATEK_HOST_BEARER_TOKEN: this.bearerToken
+      }) as NodeJS.ProcessEnv
+    }
+    this.log('----------------------')
+    this.log(`Starting service process ${this.id}`)
+    this.log(`  Path: ${scriptPath}`)
+    this.log(`  External port: ${this.port}`)
+    this.log(`  Call: ${DENO_PATH} ${args.join(' ')}`)
+    this.log(`  Env: ${JSON.stringify(opts.env)}`)
+    this.log('----------------------')
+    return childProcess.spawn(DENO_PATH, args, opts)
+  }
+
+  async startNodeProcess (): Promise<childProcess.ChildProcess> {
+    const hostcfg = Config.getActiveConfig()
+
+    let packageJson
+    try {
+      packageJson = JSON.parse(await fsp.readFile(this.getPackagePath('package.json'), 'utf8'))
+    } catch (e) {}
+
+    let scriptPath = ''
+    if (packageJson?.main && await fsp.stat(this.getPackagePath(packageJson?.main)).catch(e => undefined)) {
+      scriptPath = this.getPackagePath(packageJson?.main)
+    } else if (await fsp.stat(this.getPackagePath('index.js')).catch(e => undefined)) {
+      scriptPath = this.getPackagePath('index.js')
+    } else {
+      throw new Error('Package issue: neither package.json "main" nor /index.js could be found.')
+    }
+    const args = [
+      scriptPath
+    ]
+    const opts = {
+      env: Object.assign({}, this.config, {
+        ATEK_ASSIGNED_PORT: String(this.settings.port),
+        ATEK_HOST_PORT: String(hostcfg.port),
+        ATEK_HOST_BEARER_TOKEN: this.bearerToken
+      }) as NodeJS.ProcessEnv
+    }
+    this.log('----------------------')
+    this.log(`Starting service process ${this.id}`)
+    this.log(`  WARNING: No sandbox is present. This application has full access to the host system.`)
+    this.log(`  Path: ${scriptPath}`)
+    this.log(`  External port: ${this.port}`)
+    this.log(`  Call: ${NODE_PATH} ${args.join(' ')}`)
+    this.log(`  Env: ${JSON.stringify(opts.env)}`)
+    this.log('----------------------')
+    return childProcess.spawn(NODE_PATH, args, opts)
+  }
 }
 
 const ANSI_REGEX = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g
