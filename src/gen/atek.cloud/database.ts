@@ -5,6 +5,7 @@
  * DO NOT MODIFY
  */
 import { URL } from 'url';
+import { AtekDbRecordClient, AtekDbApiClient } from '@atek-cloud/api-broker';
 
 export const ID = "atek.cloud/database";
 export const REVISION = undefined;
@@ -38,4 +39,10 @@ export interface ServiceConfig {
 export enum NetworkAccess {
   'private' = 'private',
   'public' = 'public'
+}
+
+export class DatabaseTable extends AtekDbRecordClient<Database> {
+  constructor(api: AtekDbApiClient) {
+    super(api, ID, REVISION, TEMPLATES, JSON_SCHEMA)
+  }
 }

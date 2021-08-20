@@ -5,6 +5,7 @@
  * DO NOT MODIFY
  */
 import { URL } from 'url';
+import { AtekDbRecordClient, AtekDbApiClient } from '@atek-cloud/api-broker';
 
 export const ID = "atek.cloud/service";
 export const REVISION = undefined;
@@ -50,4 +51,10 @@ export enum RuntimeEnum {
 export enum SourceTypeEnum {
   file = 'file',
   git = 'git'
+}
+
+export class ServiceTable extends AtekDbRecordClient<Service> {
+  constructor(api: AtekDbApiClient) {
+    super(api, ID, REVISION, TEMPLATES, JSON_SCHEMA)
+  }
 }

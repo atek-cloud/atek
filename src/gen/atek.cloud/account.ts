@@ -5,6 +5,7 @@
  * DO NOT MODIFY
  */
 import { URL } from 'url';
+import { AtekDbRecordClient, AtekDbApiClient } from '@atek-cloud/api-broker';
 
 export const ID = "atek.cloud/account";
 export const REVISION = undefined;
@@ -20,4 +21,10 @@ export default interface Account {
 export enum Role {
   none = '',
   admin = 'admin'
+}
+
+export class AccountTable extends AtekDbRecordClient<Account> {
+  constructor(api: AtekDbApiClient) {
+    super(api, ID, REVISION, TEMPLATES, JSON_SCHEMA)
+  }
 }

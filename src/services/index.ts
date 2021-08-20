@@ -119,8 +119,6 @@ export async function loadCoreServices (): Promise<void> {
     console.log('HOST: Created new server database, id:', serverDbId)
     cfg.update({serverDbId})
   }
-
-  // TODO load the adb service with the configured hostdb
 }
 
 /*export async function loadUserServices (): Promise<void> {

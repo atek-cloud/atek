@@ -5,6 +5,7 @@
  * DO NOT MODIFY
  */
 import { URL } from 'url';
+import { AtekDbRecordClient, AtekDbApiClient } from '@atek-cloud/api-broker';
 
 export const ID = "atek.cloud/account-session";
 export const REVISION = undefined;
@@ -15,4 +16,10 @@ export default interface AccountSession {
   sessionId: string;
   accountId: string;
   createdAt: string;
+}
+
+export class AccountSessionTable extends AtekDbRecordClient<AccountSession> {
+  constructor(api: AtekDbApiClient) {
+    super(api, ID, REVISION, TEMPLATES, JSON_SCHEMA)
+  }
 }
