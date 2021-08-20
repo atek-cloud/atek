@@ -86,16 +86,16 @@ export interface GlobalSubscription {
 }
 
 export interface CreateResponse {
-  key: Uint8Array;
-  discoveryKey: Uint8Array;
+  key: Buffer;
+  discoveryKey: Buffer;
   writable: boolean;
   length: number;
   byteLength: number;
 }
 
 export interface DescribeResponse {
-  key: Uint8Array;
-  discoveryKey: Uint8Array;
+  key: Buffer;
+  discoveryKey: Buffer;
   writable: boolean;
   length: number;
   byteLength: number;
@@ -130,7 +130,7 @@ export interface ConfigureNetworkOptions {
 }
 
 export interface Peer {
-  remotePublicKey: Uint8Array;
+  remotePublicKey: Buffer;
   remoteAddress: string;
   type: string;
 }

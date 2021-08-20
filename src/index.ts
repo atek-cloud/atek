@@ -10,6 +10,7 @@ import { Config, ConfigValues } from './lib/config.js'
 import * as services from './services/index.js'
 import * as sessionMiddleware from './httpapi/session-middleware.js'
 import * as apiGatewayHttpApi from './httpapi/gateway.js'
+import AdbApiClient from './gen/atek.cloud/adb-api.js'
 // import * as perf from './lib/perf.js' TODO
 // import * as metrics from './lib/metrics.js' TODO
 import * as path from 'path'
@@ -51,6 +52,11 @@ export async function start (opts: StartOpts) {
   await services.setup()
   await services.loadCoreServices()
   // await services.loadUserServices() TODO
+
+  const adb = new AdbApiClient()
+  if (config.serverDbId) {
+    console.log(await adb.describe(config.serverDbId))
+  }
 
   process.on('SIGINT', close)
   process.on('SIGTERM', close)
