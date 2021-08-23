@@ -15,7 +15,7 @@ export const TEMPLATES = {"table":{"title":"Services","description":"Services in
 export default interface Service {
   id: string;
   port: number;
-  sourceUrl: URL;
+  sourceUrl: string;
   desiredVersion?: string;
   package: {
       sourceType: SourceTypeEnum
@@ -54,7 +54,7 @@ export enum SourceTypeEnum {
 }
 
 export class ServiceTable extends AtekDbRecordClient<Service> {
-  constructor(api: AtekDbApiClient) {
-    super(api, ID, REVISION, TEMPLATES, JSON_SCHEMA)
+  constructor(api: AtekDbApiClient, dbId?: string) {
+    super(api, dbId, ID, REVISION, TEMPLATES, JSON_SCHEMA)
   }
 }

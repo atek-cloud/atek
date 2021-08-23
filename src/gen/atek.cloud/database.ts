@@ -42,7 +42,7 @@ export enum NetworkAccess {
 }
 
 export class DatabaseTable extends AtekDbRecordClient<Database> {
-  constructor(api: AtekDbApiClient) {
-    super(api, ID, REVISION, TEMPLATES, JSON_SCHEMA)
+  constructor(api: AtekDbApiClient, dbId?: string) {
+    super(api, dbId, ID, REVISION, TEMPLATES, JSON_SCHEMA)
   }
 }

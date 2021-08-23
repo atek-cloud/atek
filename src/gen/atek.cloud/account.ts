@@ -24,7 +24,7 @@ export enum Role {
 }
 
 export class AccountTable extends AtekDbRecordClient<Account> {
-  constructor(api: AtekDbApiClient) {
-    super(api, ID, REVISION, TEMPLATES, JSON_SCHEMA)
+  constructor(api: AtekDbApiClient, dbId?: string) {
+    super(api, dbId, ID, REVISION, TEMPLATES, JSON_SCHEMA)
   }
 }

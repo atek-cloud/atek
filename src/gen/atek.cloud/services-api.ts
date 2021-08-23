@@ -77,13 +77,13 @@ export enum StatusEnum {
 }
 
 export interface InstallOpts {
-  sourceUrl: URL;
+  sourceUrl: string;
   desiredVersion?: string;
   port?: number;
 }
 
 export interface ConfigureOpts {
-  sourceUrl?: URL;
+  sourceUrl?: string;
   desiredVersion?: string;
   port?: number;
 }
@@ -91,7 +91,7 @@ export interface ConfigureOpts {
 export interface ServiceRecord {
   id: string;
   port: number;
-  sourceUrl: URL;
+  sourceUrl: string;
   desiredVersion?: string;
   package: {
       sourceType: SourceTypeEnum

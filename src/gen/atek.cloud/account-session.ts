@@ -19,7 +19,7 @@ export default interface AccountSession {
 }
 
 export class AccountSessionTable extends AtekDbRecordClient<AccountSession> {
-  constructor(api: AtekDbApiClient) {
-    super(api, ID, REVISION, TEMPLATES, JSON_SCHEMA)
+  constructor(api: AtekDbApiClient, dbId?: string) {
+    super(api, dbId, ID, REVISION, TEMPLATES, JSON_SCHEMA)
   }
 }

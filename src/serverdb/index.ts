@@ -20,10 +20,14 @@ export const services = new ServiceTable(api)
 export async function setup () {
   const cfg = Config.getActiveConfig()
   if (!cfg.serverDbId) throw new Error('Unable to setup host database: no server DB configured')
+  accounts.bindDb(cfg.serverDbId)
+  accountSessions.bindDb(cfg.serverDbId)
+  databases.bindDb(cfg.serverDbId)
+  services.bindDb(cfg.serverDbId)
   await Promise.all([
-    accounts.register(cfg.serverDbId),
-    accountSessions.register(cfg.serverDbId),
-    databases.register(cfg.serverDbId),
-    services.register(cfg.serverDbId)
+    accounts.register(),
+    accountSessions.register(),
+    databases.register(),
+    services.register()
   ])
 }

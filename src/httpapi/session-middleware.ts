@@ -1,7 +1,7 @@
 import * as express from 'express'
 import { v4 as uuidv4 } from 'uuid'
-// import { privateServerDb } from '../db/index.js' TODO
-// import * as apps from '../apps/index.js' TODO
+import * as serverdb from '../serverdb/index.js'
+import * as services from '../services/index.js'
 
 interface SessionAuth {
   sessionId?: string
@@ -42,7 +42,7 @@ class Session {
       accountId,
       createdAt: (new Date()).toISOString()
     }
-    // await privateServerDb.accountSessions.put(sess.sessionId, sess) TODO
+    await serverdb.accountSessions.put(sess.sessionId, sess)
     this.auth = {
       sessionId: sess.sessionId,
       accountId
@@ -56,7 +56,7 @@ class Session {
 
   async destroy (): Promise<void> {
     if (this.req.cookies.session) {
-      // await privateServerDb.accountSessions.del(this.req.cookies.session) TODO
+      await serverdb.accountSessions.delete(this.req.cookies.session)
       this.res.clearCookie('session')
       this.auth = undefined
     }
@@ -67,22 +67,20 @@ export function setup () {
   return async (req: RequestWithSession, res: express.Response, next: express.NextFunction) => {
     let auth = undefined
     if (req.cookies.session) {
-      // TODO
-      // const sessionRecord = await privateServerDb.accountSessions.get(req.cookies.session).catch(e => undefined)
-      // if (sessionRecord) {
-      //   auth = {
-      //     sessionId: sessionRecord.value.sessionId,
-      //     username: sessionRecord.value.username
-      //   }
-      // }
+      const sessionRecord = await serverdb.accountSessions.get(req.cookies.session).catch(e => undefined)
+      if (sessionRecord?.value) {
+        auth = {
+          sessionId: sessionRecord.value.sessionId,
+          accountId: sessionRecord.value.accountId
+        }
+      }
     } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
-      // TODO
-      // const app = apps.getByBearerToken(req.headers.authorization.split(' ')[1])
-      // if (app) {
-      //   auth = {
-      //     appId: app.id
-      //   }
-      // }
+      const srv = services.getByBearerToken(req.headers.authorization.split(' ')[1])
+      if (srv) {
+        auth = {
+          appId: srv.id
+        }
+      }
     }
     req.session = new Session(req, res, auth)
     next()
