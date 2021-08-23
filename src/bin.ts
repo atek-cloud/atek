@@ -5,6 +5,8 @@ import * as server from './index.js'
 import * as path from 'path'
 import { fileURLToPath } from 'url'
 import * as fs from 'fs'
+import { DEFAULT_REPL_PORT } from './lib/config.js'
+import * as net from 'net'
 
 const PACKAGE_JSON_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json')
 
@@ -40,6 +42,21 @@ const match = subcommand({
           hyperspaceHost: undefined,
           hyperspaceStorage: undefined
         })
+      }
+    },
+    {
+      name: 'repl',
+      command: (args: any) => {
+        const port = Number(args.port || DEFAULT_REPL_PORT)
+        const host = args.host || 'localhost'
+        const socket = net.connect(port, host)
+        process.stdin.pipe(socket)
+        socket.pipe(process.stdout)
+        socket.on('connect', () => {
+          process.stdin.setRawMode(true)
+        })
+        socket.on('close', () => process.exit(0))
+        process.on('exit', () => socket.end())
       }
     }
   ],

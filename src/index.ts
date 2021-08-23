@@ -5,6 +5,7 @@ import createExpressApp, * as express from 'express'
 import WebSocket, * as ws from 'ws'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
+import * as repl from './repl/index.js'
 import { Config, ConfigValues } from './lib/config.js'
 // import * as db from './db/index.js' TODO
 import * as services from './services/index.js'
@@ -46,6 +47,7 @@ export async function start (opts: StartOpts) {
   // metrics.setup({configDir: opts.configDir}) TODO
   if (config.debugMode) console.log('Debug mode enabled')
 
+  repl.setup()
   const server = createServer(config)
 
   // initiate the services layer

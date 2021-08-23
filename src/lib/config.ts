@@ -2,6 +2,8 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as os from 'os'
 
+export const DEFAULT_REPL_PORT = 2999
+export const DEFAULT_HOST_PORT = 3000
 let _activeConfig: Config | undefined = undefined
 
 export interface ConfigValues {
@@ -59,7 +61,7 @@ export class Config implements ConfigValues {
   }
 
   get port () {
-    return this.overrides.port || this.values.port || 3000
+    return this.overrides.port || this.values.port || DEFAULT_HOST_PORT
   }
 
   get debugMode () {
