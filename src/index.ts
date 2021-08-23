@@ -52,8 +52,7 @@ export async function start (opts: StartOpts) {
   await services.setup()
   await services.loadCoreServices()
   await serverdb.setup()
-  console.log(await serverdb.api.describe(Config.getActiveConfig().serverDbId || ''))
-  // await services.loadUserServices() TODO
+  await services.loadUserServices()
 
   process.on('SIGINT', close)
   process.on('SIGTERM', close)

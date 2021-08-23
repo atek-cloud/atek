@@ -112,7 +112,6 @@ export async function loadCoreServices (): Promise<void> {
     ATEK_SERVER_DBID: cfg.serverDbId,
     ATEK_SERVER_DB_CREATE_NEW: cfg.serverDbId ? '' : '1'
   })
-  await services.get('core.adb')?.start()
 
   const serverDbId = await adbCtrlApi.getServerDatabaseId()
   if (!cfg.isOverridden('serverDbId') && cfg.serverDbId !== serverDbId) {
@@ -128,7 +127,7 @@ export async function loadUserServices (): Promise<void> {
   }
 }
 
-export async function install (params: InstallParams, authedUsername: string): Promise<AtekService> {
+export async function install (params: InstallParams, authedUsername: string): Promise<ServiceInstance> {
   if (!params.sourceUrl) {
     throw new Error('Source URL is required')
   }
@@ -177,8 +176,9 @@ export async function install (params: InstallParams, authedUsername: string): P
     installedBy: authedUsername
   }
   await serverdb.services.put(params.id, recordValue)
-  await load(recordValue)
-  return recordValue
+  const inst = await load(recordValue)
+  if (!inst) throw new Error('Failed to load installed service')
+  return inst
 }
 
 export async function updateConfig (id: string, params: UpdateParams): Promise<void> {
@@ -222,6 +222,7 @@ export async function load (settings: AtekService, config: ServiceConfig = {}): 
     if (!services.has(id)) {
       services.set(id, new ServiceInstance(settings, config))
       await services.get(id)?.setup()
+      await services.get(id)?.start()
     }
     return services.get(id)
   } finally {
