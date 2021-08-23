@@ -32,7 +32,8 @@ export function setup (app: express.Application) {
         const apiRes = await apiBroker.routeRpc(callDesc, parsed.payload.method, params)
         return res.status(200).json(jsonrpc.success(parsed.payload.id, apiRes))
       } catch (e) {
-        return res.status(200).json(jsonrpc.error(e.code || -32000, e.toString()))
+        const rpcErr = e instanceof jsonrpc.JsonRpcError ? e : new jsonrpc.JsonRpcError(e.message || e.toString(), e.code || -32000, e.data)
+        return res.status(200).json(jsonrpc.error(parsed.payload.id, rpcErr))
       }
     }
     return res.status(200).json({})
