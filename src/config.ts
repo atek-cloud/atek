@@ -1,10 +1,25 @@
 import * as path from 'path'
 import * as fs from 'fs'
 import * as os from 'os'
+import { InstallParams } from './services/index.js'
 
 export const DEFAULT_REPL_PORT = 2999
 export const DEFAULT_HOST_PORT = 3000
 let _activeConfig: Config | undefined = undefined
+
+const DEFAULT_CORE_SERVICES: InstallParams[] = [
+  {
+    sourceUrl: 'https://github.com/atek-cloud/hyper-daemon',
+    config: {
+      SIMULATE_HYPERSPACE: '0',
+      HYPERSPACE_HOST: undefined,
+      HYPERSPACE_STORAGE: undefined
+    }
+  },
+  {
+    sourceUrl: 'https://github.com/atek-cloud/adb'
+  }
+]
 
 export interface ConfigValues {
   domain?: string
@@ -14,6 +29,7 @@ export interface ConfigValues {
   hyperspaceHost?: string
   hyperspaceStorage?: string
   serverDbId?: string
+  coreServices?: InstallParams[]
 }
 
 export class Config implements ConfigValues {
@@ -82,6 +98,10 @@ export class Config implements ConfigValues {
 
   get serverDbId () {
     return this.overrides.serverDbId || this.values.serverDbId || undefined
+  }
+
+  get coreServices () {
+    return this.overrides.coreServices || this.values.coreServices || DEFAULT_CORE_SERVICES
   }
 
   isOverridden (key: string): boolean {

@@ -1,7 +1,7 @@
 import git from 'isomorphic-git'
 import http from 'isomorphic-git/http/node/index.js'
 import * as fs from 'fs'
-import { Config } from './config.js'
+import { Config } from '../config.js'
 import semver from 'semver'
 
 export async function clone (id: string, url: string): Promise<string> {

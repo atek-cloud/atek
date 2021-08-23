@@ -1,19 +1,16 @@
-import { ServiceInstance, ServiceConfig } from './instance.js'
+import { ServiceInstance } from './instance.js'
 import * as serverdb from '../serverdb/index.js'
 import * as git from '../lib/git.js'
+import * as npm from '../lib/npm.js'
 import { fileURLToPath } from 'url'
 import * as path from 'path'
 import { promises as fsp } from 'fs'
-import { Config } from '../lib/config.js'
+import { Config } from '../config.js'
 import lock from '../lib/lock.js'
-import { getAvailableId, getAvailablePort } from './util.js'
+import { sourceUrlToId, getAvailableId, getAvailablePort } from './util.js'
 import { createValidator } from '../schemas/util.js'
 import AtekService, { SourceTypeEnum, RuntimeEnum } from '../gen/atek.cloud/service.js'
 import AdbCtrlApi from '../gen/atek.cloud/adb-ctrl-api.js'
-import { HyperServiceInstance } from '../hyper/service.js'
-
-const INSTALL_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
-const INSTALL_ADB_PATH = path.join(INSTALL_PATH, 'adb')
 
 const manifestValidator = createValidator({
   type: 'object',
@@ -22,6 +19,7 @@ const manifestValidator = createValidator({
     description: {type: 'string'},
     author: {type: 'string'},
     license: {type: 'string'},
+    runtime: {type: 'string', enum: ['node', 'deno']},
     protocols: {
       type: 'object',
       properties: {
@@ -38,24 +36,30 @@ const manifestValidator = createValidator({
   }
 })
 
-interface InstallParams {
+export interface ServiceConfig {
+  [key: string]: string | undefined
+}
+
+export interface InstallParams {
   sourceUrl: string
   id?: string
   port?: number
   desiredVersion?: string
+  config?: ServiceConfig
 }
 
-interface UpdateParams {
+export interface UpdateParams {
   sourceUrl?: string
   port?: number
   desiredVersion?: string
 }
 
-interface ServiceManifest {
+export interface ServiceManifest {
   title?: string
   description?: string
   author?: string
   license?: string
+  runtime?: RuntimeEnum
   protocols?: {
     tables?: string[]
   }
@@ -75,45 +79,12 @@ export async function setup (): Promise<void> {
 
 export async function loadCoreServices (): Promise<void> {
   const cfg = Config.getActiveConfig()
-  services.set('core.hyper', new HyperServiceInstance({
-    id: 'core.hyper',
-    port: 0,
-    sourceUrl: 'https://atek.cloud', // TODO
-    package: {
-      sourceType: SourceTypeEnum.file
-    },
-    system: {appPort: 0},
-    installedBy: 'system'
-  }, {
-    SIMULATE_HYPERSPACE: cfg?.simulateHyperspace ? '1' : '',
-    HYPERSPACE_HOST: cfg?.hyperspaceHost,
-    HYPERSPACE_STORAGE: cfg?.hyperspaceStorage
-  }))
-  await services.get('core.hyper')?.setup()
-  await services.get('core.hyper')?.start()
+  for (const serviceParams of cfg.coreServices) {
+    await loadCoreService(serviceParams)
+  }
 
-  await load({
-    id: 'core.adb',
-    port: 12345, // TODO
-    sourceUrl: `file://${INSTALL_ADB_PATH}`,
-    package: {
-      sourceType: SourceTypeEnum.file
-    },
-    manifest: {
-      runtime: RuntimeEnum.node,
-      "exports": [
-        {"api": "atek.cloud/adb-api", "path": "/_api/adb"},
-        {"api": "atek.cloud/adb-ctrl-api", "path": "/_api/adb-ctrl"}
-      ]
-    },
-    system: {appPort: 12345}, // TODO
-    installedBy: 'system'
-  }, {
-    ATEK_SERVER_DBID: cfg.serverDbId,
-    ATEK_SERVER_DB_CREATE_NEW: cfg.serverDbId ? '' : '1'
-  })
-
-  const serverDbId = await adbCtrlApi.getServerDatabaseId()
+  await adbCtrlApi.init({serverDbId: cfg.serverDbId || ''})
+  const {serverDbId} = await adbCtrlApi.getConfig()
   if (!cfg.isOverridden('serverDbId') && cfg.serverDbId !== serverDbId) {
     console.log('HOST: Created new server database, id:', serverDbId)
     cfg.update({serverDbId})
@@ -142,23 +113,11 @@ export async function install (params: InstallParams, authedUsername: string): P
     params.port = await getAvailablePort()
   }
 
-  let sourceType = 'file'
-  let installedVersion = undefined
-  if (params?.sourceUrl && !params.sourceUrl.startsWith('file://')) {
-    try {
-      await git.clone(params.id, params.sourceUrl)
-    } catch (e) {
-      throw new Error(`Failed to install app. Is it a Git repo? ${e.toString()}`)
-    }
-    sourceType = 'git'
-    installedVersion = await git.getLatestVersion(params.id, params.desiredVersion || 'latest')
-    if (!installedVersion) {
-      throw new Error(`This git repo has not published any releases.`)
-    }
-    await git.checkout(params.id, installedVersion)
-  }
-
+  const {sourceType, installedVersion} = await fetchPackage(params)
   const manifest = await readManifestFile(params.id, params.sourceUrl)
+  if (manifest?.runtime === 'node') {
+    await npm.setupPackage(params.id, getInstallPath(params.id, params.sourceUrl))
+  }
 
   const recordValue = {
     id: params.id,
@@ -230,6 +189,44 @@ export async function load (settings: AtekService, config: ServiceConfig = {}): 
   }
 }
 
+export async function loadCoreService (params: InstallParams): Promise<ServiceInstance> {
+  if (!params.sourceUrl) {
+    throw new Error('Source URL is required')
+  }
+
+  if (!params.id) {
+    params.id = `core.${sourceUrlToId(params.sourceUrl)}`
+  }
+  if (!params.port) {
+    params.port = await getAvailablePort(true)
+  }
+
+  const {sourceType, installedVersion} = await fetchPackage(params)
+  const manifest = await readManifestFile(params.id, params.sourceUrl)
+  if (manifest?.runtime === 'node') {
+    await npm.setupPackage(params.id, getInstallPath(params.id, params.sourceUrl))
+  }
+
+  const recordValue = {
+    id: params.id,
+    port: params.port,
+    sourceUrl: params.sourceUrl,
+    desiredVersion: params.desiredVersion,
+    package: {
+      sourceType: sourceType as SourceTypeEnum,
+      installedVersion
+    },
+    manifest,
+    system: {
+      appPort: await getAvailablePort(true)
+    },
+    installedBy: 'system'
+  }
+  const inst = await load(recordValue)
+  if (!inst) throw new Error('Failed to load core service')
+  return inst
+}
+
 export function get (id: string): ServiceInstance | undefined {
   return services.get(id)
 }
@@ -276,6 +273,9 @@ export async function updatePackage (id: string): Promise<object> {
   await git.checkout(id, latestVersion)
 
   const manifest = await readManifestFile(id, record.value.sourceUrl)
+  if (manifest?.runtime === 'node') {
+    await npm.setupPackage(id, getInstallPath(id, record.value.sourceUrl))
+  }
 
   const oldVersion = record.value.package.installedVersion
   record.value.manifest = manifest
@@ -298,6 +298,28 @@ export function getInstallPath (id: string, sourceUrl: string): string {
 
 // internal methods
 // =
+
+async function fetchPackage (params: InstallParams) {
+  if (!params.id) throw new Error('ID is required')
+
+  let sourceType = 'file'
+  let installedVersion = undefined
+  if (params?.sourceUrl && !params.sourceUrl.startsWith('file://')) {
+    try {
+      await git.clone(params.id, params.sourceUrl)
+    } catch (e) {
+      throw new Error(`Failed to install app. Is it a Git repo? ${e.toString()}`)
+    }
+    sourceType = 'git'
+    installedVersion = await git.getLatestVersion(params.id, params.desiredVersion || 'latest')
+    if (!installedVersion) {
+      throw new Error(`This git repo has not published any releases.`)
+    }
+    await git.checkout(params.id, installedVersion)
+  }
+
+  return {sourceType, installedVersion}
+}
 
 async function readManifestFile (id: string, sourceUrl: string): Promise<ServiceManifest | undefined> {
   try {

@@ -9,8 +9,8 @@ import { ApiBrokerServer, ApiBrokerServerHandlers } from '@atek-cloud/api-broker
 
 export const ID = "atek.cloud/adb-ctrl-api";
 export const REVISION = undefined;
-const SCHEMAS = {"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"AdbCtrlApi":{"type":"object"},"api_AdbCtrlApi_GetServerDatabaseId":{"type":"object","properties":{"params":{"type":"array","minItems":0,"maxItems":0},"returns":{"type":"string"}},"required":["params","returns"]}}};
-const EXPORT_MAP = {"methods":{"getServerDatabaseId":"#/definitions/api_AdbCtrlApi_GetServerDatabaseId"},"events":{}};
+const SCHEMAS = {"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"AdbCtrlApi":{"type":"object"},"AdbSettings":{"type":"object","properties":{"serverDbId":{"type":"string"}},"required":["serverDbId"]},"api_AdbCtrlApi_Init":{"type":"object","properties":{"params":{"type":"array","items":{"$ref":"#/definitions/AdbSettings"},"minItems":1,"maxItems":1},"returns":{"type":"null"}},"required":["params","returns"]},"api_AdbCtrlApi_GetConfig":{"type":"object","properties":{"params":{"type":"array","minItems":0,"maxItems":0},"returns":{"$ref":"#/definitions/AdbSettings"}},"required":["params","returns"]}}};
+const EXPORT_MAP = {"methods":{"init":"#/definitions/api_AdbCtrlApi_Init","getConfig":"#/definitions/api_AdbCtrlApi_GetConfig"},"events":{}};
 
 export default class AdbCtrlApiServer extends ApiBrokerServer {
   constructor(handlers: ApiBrokerServerHandlers) {

@@ -3,23 +3,20 @@ import * as childProcess from 'child_process'
 import * as path from 'path'
 import { promises as fsp, createWriteStream, WriteStream } from 'fs'
 import { fileURLToPath } from 'url'
-import { Config } from '../lib/config.js'
+import { Config } from '../config.js'
 import { generateBearerToken } from '../lib/crypto.js'
 import { joinPath } from '../lib/strings.js'
 import lock from '../lib/lock.js'
 import fetch from 'node-fetch'
-import WebSocket from 'ws'
+import WebSocket, { createWebSocketStream } from 'ws'
 import jsonrpc from 'jsonrpc-lite'
+import { ServiceConfig } from './index.js'
 import AtekService, { ServiceManifest, ApiExportDesc, RuntimeEnum } from '../gen/atek.cloud/service.js'
 import * as apiBroker from '@atek-cloud/api-broker'
 
 const INSTALL_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const DENO_PATH = path.join(INSTALL_PATH, 'bin', 'deno')
 const NODE_PATH = process.execPath
-
-export interface ServiceConfig {
-  [key: string]: string | undefined
-}
 
 let _id = 1 // json-rpc ID incrementer
 
@@ -143,8 +140,7 @@ export class ServiceInstance extends EventEmitter {
       await this.awaitServerActive()
 
       for (const apiDesc of this.exportedApis) {
-        // TODO register proxy
-        apiBroker.registerProvider(this, apiBroker.TransportEnum.RPC, apiDesc.api)
+        apiBroker.registerProvider(this, (apiDesc.transport || 'rpc') as apiBroker.TransportEnum, apiDesc.api)
       }
 
       this.emit('start')
@@ -189,7 +185,7 @@ export class ServiceInstance extends EventEmitter {
   }
 
   async handleRpc (callDesc: apiBroker.CallDescription, methodName: string, params: unknown[]): Promise<unknown> {
-    const apiDesc = this.exportedApis.find(apiDesc => apiDesc.api === callDesc.api)
+    const apiDesc = this.exportedApis.find(apiDesc => apiDesc.api === callDesc.api && (!apiDesc.transport || apiDesc.transport === 'rpc'))
     if (apiDesc) {
       const path = apiDesc.path || '/'
       const url = joinPath(`http://localhost:${this.port}`, path)
@@ -211,14 +207,15 @@ export class ServiceInstance extends EventEmitter {
   }
 
   handleProxy (callDesc: apiBroker.CallDescription, socket: WebSocket) {
-    // TODO
-    // if (callDesc.api === 'atek.cloud/hypercore-api') {
-    //   const hypSocket = net.connect(getNetworkOptions({host: this.hyperspaceHost}))
-    //   const wsStream = createWebSocketStream(socket)
-    //   wsStream.pipe(hypSocket).pipe(wsStream)
-    // } else {
-    //   throw new apiBroker.ServiceNotFound('API not found')
-    // }
+    const apiDesc = this.exportedApis.find(apiDesc => apiDesc.api === callDesc.api && apiDesc.transport === 'proxy')
+    if (apiDesc) {
+      const remoteSocket = new WebSocket(`ws://localhost:${this.port}${apiDesc.path || '/'}`)
+      const s1 = createWebSocketStream(socket)
+      const s2 = createWebSocketStream(remoteSocket)
+      s1.pipe(s2).pipe(s1)
+    } else {
+      throw new apiBroker.ServiceNotFound('API not found')
+    }
   }
 
   async startDenoProcess (): Promise<childProcess.ChildProcess> {

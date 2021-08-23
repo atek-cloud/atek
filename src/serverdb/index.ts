@@ -1,4 +1,4 @@
-import { Config } from '../lib/config.js'
+import { Config } from '../config.js'
 import AdbApiClient from '../gen/atek.cloud/adb-api.js'
 import { AccountTable } from '../gen/atek.cloud/account.js'
 import { AccountSessionTable } from '../gen/atek.cloud/account-session.js'

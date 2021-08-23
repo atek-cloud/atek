@@ -5,7 +5,7 @@ import * as server from './index.js'
 import * as path from 'path'
 import { fileURLToPath } from 'url'
 import * as fs from 'fs'
-import { DEFAULT_REPL_PORT } from './lib/config.js'
+import { DEFAULT_REPL_PORT } from './config.js'
 import * as net from 'net'
 
 const PACKAGE_JSON_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json')

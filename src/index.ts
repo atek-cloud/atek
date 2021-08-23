@@ -6,7 +6,7 @@ import WebSocket, * as ws from 'ws'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import * as repl from './repl/index.js'
-import { Config, ConfigValues } from './lib/config.js'
+import { Config, ConfigValues } from './config.js'
 // import * as db from './db/index.js' TODO
 import * as services from './services/index.js'
 import * as serverdb from './serverdb/index.js'

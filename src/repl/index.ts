@@ -2,7 +2,7 @@ import net from 'net'
 import REPL from 'repl'
 import * as util from 'util'
 import minimist from 'minimist'
-import { DEFAULT_REPL_PORT } from '../lib/config.js'
+import { DEFAULT_REPL_PORT } from '../config.js'
 
 import * as services from '../services/index.js'
 import { ServiceInstance } from '../services/instance.js'

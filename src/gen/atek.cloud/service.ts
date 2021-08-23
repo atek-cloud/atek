@@ -9,7 +9,7 @@ import { AtekDbRecordClient, AtekDbApiClient } from '@atek-cloud/api-broker';
 
 export const ID = "atek.cloud/service";
 export const REVISION = undefined;
-export const JSON_SCHEMA = {"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"Service":{"type":"object","properties":{"id":{"type":"string"},"port":{"type":"number"},"sourceUrl":{"type":"string","format":"uri"},"desiredVersion":{"type":"string"},"package":{"type":"object","properties":{"sourceType":{"$ref":"#/definitions/SourceTypeEnum"},"installedVersion":{"type":"string"},"title":{"type":"string"}},"required":["sourceType"]},"manifest":{"$ref":"#/definitions/ServiceManifest"},"system":{"type":"object","properties":{"appPort":{"type":"number"}},"required":["appPort"]},"installedBy":{"type":"string"}},"required":["id","port","sourceUrl","package","system","installedBy"]},"SourceTypeEnum":{"type":"string","enum":["file","git"]},"ServiceManifest":{"type":"object","properties":{"runtime":{"$ref":"#/definitions/RuntimeEnum"},"name":{"type":"string"},"description":{"type":"string"},"author":{"type":"string"},"license":{"type":"string"},"exports":{"type":"array","items":{"$ref":"#/definitions/ApiExportDesc"}}}},"RuntimeEnum":{"type":"string","enum":["deno","node"]},"ApiExportDesc":{"type":"object","properties":{"api":{"type":"string"},"path":{"type":"string"}},"required":["api"]}},"$ref":"#/definitions/Service"};
+export const JSON_SCHEMA = {"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"Service":{"type":"object","properties":{"id":{"type":"string"},"port":{"type":"number"},"sourceUrl":{"type":"string","format":"uri"},"desiredVersion":{"type":"string"},"package":{"type":"object","properties":{"sourceType":{"$ref":"#/definitions/SourceTypeEnum"},"installedVersion":{"type":"string"},"title":{"type":"string"}},"required":["sourceType"]},"manifest":{"$ref":"#/definitions/ServiceManifest"},"system":{"type":"object","properties":{"appPort":{"type":"number"}},"required":["appPort"]},"installedBy":{"type":"string"}},"required":["id","port","sourceUrl","package","system","installedBy"]},"SourceTypeEnum":{"type":"string","enum":["file","git"]},"ServiceManifest":{"type":"object","properties":{"runtime":{"$ref":"#/definitions/RuntimeEnum"},"name":{"type":"string"},"description":{"type":"string"},"author":{"type":"string"},"license":{"type":"string"},"exports":{"type":"array","items":{"$ref":"#/definitions/ApiExportDesc"}}}},"RuntimeEnum":{"type":"string","enum":["deno","node"]},"ApiExportDesc":{"type":"object","properties":{"api":{"type":"string"},"path":{"type":"string"},"transport":{"$ref":"#/definitions/ApiTransportEnum"}},"required":["api"]},"ApiTransportEnum":{"type":"string","enum":["rpc","proxy"]}},"$ref":"#/definitions/Service"};
 export const TEMPLATES = {"table":{"title":"Services","description":"Services installed to the host environment."},"record":{"key":"{{/id}}","title":"Service \"{{/id}}\", source: {{/sourceUrl}}"}};
 
 export default interface Service {
@@ -41,6 +41,7 @@ export interface ServiceManifest {
 export interface ApiExportDesc {
   api: string;
   path?: string;
+  transport?: ApiTransportEnum;
 }
 
 export enum RuntimeEnum {
@@ -51,6 +52,11 @@ export enum RuntimeEnum {
 export enum SourceTypeEnum {
   file = 'file',
   git = 'git'
+}
+
+export enum ApiTransportEnum {
+  rpc = 'rpc',
+  proxy = 'proxy'
 }
 
 export class ServiceTable extends AtekDbRecordClient<Service> {
