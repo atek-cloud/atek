@@ -29,7 +29,8 @@ export async function startAtek (config: ConfigValues = {}) {
   )
 
   const apis = {
-    inspect: createRpc('atek.cloud/inspect-api', authToken)
+    inspect: createRpc('atek.cloud/inspect-api', authToken),
+    adb: createRpc('atek.cloud/adb-api', authToken)
   }
   let isReady = false
   for (let i = 0; i < 100; i++) {

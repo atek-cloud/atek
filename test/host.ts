@@ -1,7 +1,13 @@
 import test from 'ava'
 import { startAtek } from './_util/index.js'
 
-test('Correctly loads core services (hyper, adb), creates server db, and routes calls to it', async t => {
+let inst: any
+let activeCfg: any
+test.after(async () => {
+  await inst.close()
+})
+
+test.serial('Correctly loads core services (hyper, adb) and creates server db', async t => {
   const cfg = {
     coreServices: [
       {
@@ -11,9 +17,9 @@ test('Correctly loads core services (hyper, adb), creates server db, and routes 
       {sourceUrl: 'https://github.com/atek-cloud/adb'}
     ]
   }
-  const inst = await startAtek(cfg)
+  inst = await startAtek(cfg)
 
-  const activeCfg = await inst.apis.inspect('getConfig')
+  activeCfg = await inst.apis.inspect('getConfig')
   t.truthy(activeCfg.serverDbId, 'Server DB ID was created')
   t.is(activeCfg.coreServices.length, 2, 'Core services config match what we passed')
   t.is(activeCfg.coreServices[0].sourceUrl, cfg.coreServices[0].sourceUrl, 'Core services config match what we passed')
@@ -23,6 +29,14 @@ test('Correctly loads core services (hyper, adb), creates server db, and routes 
   t.truthy(activeCfg.coreServices[1].id, 'Core services are active')
   t.truthy(activeCfg.coreServices[0].port, 'Core services are active')
   t.truthy(activeCfg.coreServices[1].port, 'Core services are active')
+})
 
-  await inst.close()
+test.serial('Routes calls to the server db', async t => {
+  const desc = await inst.apis.adb('describe', [activeCfg.serverDbId])
+  t.truthy(desc, 'Returns a description object')
+  t.is(desc.dbId, activeCfg.serverDbId, 'Gave the correct database\'s description')
+  t.truthy(desc.tables.find((table: any) => table.tableId === 'atek.cloud/database'), 'Registered atek.cloud/database')
+  t.truthy(desc.tables.find((table: any) => table.tableId === 'atek.cloud/account'), 'Registered atek.cloud/account')
+  t.truthy(desc.tables.find((table: any) => table.tableId === 'atek.cloud/account-session'), 'Registered atek.cloud/account-session')
+  t.truthy(desc.tables.find((table: any) => table.tableId === 'atek.cloud/service'), 'Registered atek.cloud/service')
 })
