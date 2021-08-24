@@ -12,6 +12,7 @@ import WebSocket, { createWebSocketStream } from 'ws'
 import jsonrpc from 'jsonrpc-lite'
 import { ServiceConfig } from './index.js'
 import AtekService, { ServiceManifest, ApiExportDesc, RuntimeEnum } from '../gen/atek.cloud/service.js'
+import { ServiceInfo, StatusEnum } from '../gen/atek.cloud/services-api.js'
 import * as apiBroker from '@atek-cloud/api-broker'
 
 const INSTALL_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -89,10 +90,10 @@ export class ServiceInstance extends EventEmitter {
     return lock(`service:${this.id}:process-ctrl`)
   }
 
-  toJSON (): object {
+  toJSON (): ServiceInfo {
     return {
-      isActive: this.isActive,
-      ...this.settings
+      status: this.isActive ? StatusEnum.active : StatusEnum.inactive,
+      settings: this.settings
     }
   }
 

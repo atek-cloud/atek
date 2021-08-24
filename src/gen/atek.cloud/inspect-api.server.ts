@@ -9,10 +9,13 @@ import { ApiBrokerServer, ApiBrokerServerHandlers } from '@atek-cloud/api-broker
 
 export const ID = "atek.cloud/inspect-api";
 export const REVISION = undefined;
-const SCHEMAS = {"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"InspectApi":{"type":"object"},"api_InspectApi_IsReady":{"type":"object","properties":{"params":{"type":"array","minItems":0,"maxItems":0},"returns":{"type":"boolean"}},"required":["params","returns"]},"api_InspectApi_GetConfig":{"type":"object","properties":{"params":{"type":"array","minItems":0,"maxItems":0},"returns":{"type":"object"}},"required":["params","returns"]}}};
-const EXPORT_MAP = {"methods":{"isReady":"#/definitions/api_InspectApi_IsReady","getConfig":"#/definitions/api_InspectApi_GetConfig"},"events":{}};
+export const SCHEMAS = {"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"InspectApi":{"type":"object"},"api_InspectApi_IsReady":{"type":"object","properties":{"params":{"type":"array","minItems":0,"maxItems":0},"returns":{"type":"boolean"}},"required":["params","returns"]},"api_InspectApi_GetConfig":{"type":"object","properties":{"params":{"type":"array","minItems":0,"maxItems":0},"returns":{"type":"object"}},"required":["params","returns"]}}};
+export const EXPORT_MAP = {"methods":{"isReady":"#/definitions/api_InspectApi_IsReady","getConfig":"#/definitions/api_InspectApi_GetConfig"},"events":{}};
 
 export default class InspectApiServer extends ApiBrokerServer {
+  ID = "atek.cloud/inspect-api";
+  REVISION = undefined;
+
   constructor(handlers: ApiBrokerServerHandlers) {
     super(SCHEMAS, EXPORT_MAP, handlers)
   }

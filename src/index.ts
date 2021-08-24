@@ -11,8 +11,7 @@ import * as services from './services/index.js'
 import * as serverdb from './serverdb/index.js'
 import * as sessionMiddleware from './httpapi/session-middleware.js'
 import * as apiGatewayHttpApi from './httpapi/gateway.js'
-import * as apiBroker from '@atek-cloud/api-broker'
-import InspectApiServer from './gen/atek.cloud/inspect-api.server.js'
+import * as rpcapi from './rpcapi/index.js'
 // import * as perf from './lib/perf.js' TODO
 // import * as metrics from './lib/metrics.js' TODO
 import fs from 'fs'
@@ -39,7 +38,6 @@ declare module 'ws' {
 export * as test from './test.js'
 
 export async function start (opts: StartOpts) {
-  let isReady = false
   const configDir = opts.configDir || path.join(os.homedir(), '.atek')
   const config = new Config(configDir, opts)
   Config.setActiveConfig(config)
@@ -53,27 +51,14 @@ export async function start (opts: StartOpts) {
   repl.setup()
   const server = createServer(config)
 
-  // export inspector api
-  const inspectApiServer = new InspectApiServer({
-    isReady: () => isReady,
-    getConfig: () => config.values
-  })
-  const systemApiProvider = {
-    id: 'system',
-    handleRpc (callDesc: apiBroker.CallDescription, methodName: string, params: any[]): Promise<any> {
-      if (callDesc.api === 'atek.cloud/inspect-api') {
-        return inspectApiServer.handle(callDesc, methodName, params)
-      }
-      throw new Error('API not found')
-    }
-  }
-  apiBroker.registerProvider(systemApiProvider, apiBroker.TransportEnum.RPC, 'atek.cloud/inspect-api')
-
   // initiate the services layer
   await services.setup()
   await services.loadCoreServices()
   await serverdb.setup()
   await services.loadUserServices()
+
+  // setup rpc apis
+  rpcapi.setup()
 
   process.on('SIGINT', close)
   process.on('SIGTERM', close)
@@ -84,7 +69,6 @@ export async function start (opts: StartOpts) {
     process.exit(0)
   }
 
-  isReady = true
   return {
     server,
     close: () => {

@@ -9,23 +9,65 @@ import { ApiBrokerClient } from '@atek-cloud/api-broker';
 
 export const ID = "atek.cloud/adb-ctrl-api";
 export const REVISION = undefined;
-const SCHEMAS = {"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"AdbCtrlApi":{"type":"object"},"AdbSettings":{"type":"object","properties":{"serverDbId":{"type":"string"}},"required":["serverDbId"]},"api_AdbCtrlApi_Init":{"type":"object","properties":{"params":{"type":"array","items":{"$ref":"#/definitions/AdbSettings"},"minItems":1,"maxItems":1},"returns":{"type":"null"}},"required":["params","returns"]},"api_AdbCtrlApi_GetConfig":{"type":"object","properties":{"params":{"type":"array","minItems":0,"maxItems":0},"returns":{"$ref":"#/definitions/AdbSettings"}},"required":["params","returns"]}}};
-const EXPORT_MAP = {"methods":{"init":"#/definitions/api_AdbCtrlApi_Init","getConfig":"#/definitions/api_AdbCtrlApi_GetConfig"},"events":{}};
+const SCHEMAS = {"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"AdbCtrlApi":{"type":"object"},"AdbProcessConfig":{"type":"object","properties":{"serverDbId":{"type":"string"}},"required":["serverDbId"]},"DbInfo":{"type":"object","properties":{"dbId":{"type":"string"}},"required":["dbId"]},"DbSettings":{"type":"object","properties":{"type":{"$ref":"#/definitions/DbInternalType"},"alias":{"type":"string"},"displayName":{"type":"string"},"tables":{"type":"array","items":{"type":"string"}},"network":{"$ref":"#/definitions/NetworkSettings"},"persist":{"type":"boolean"},"presync":{"type":"boolean"}}},"DbInternalType":{"type":"string","const":"hyperbee"},"NetworkSettings":{"type":"object","properties":{"access":{"type":"string"}}},"api_AdbCtrlApi_Init":{"type":"object","properties":{"params":{"type":"array","items":{"$ref":"#/definitions/AdbProcessConfig"},"minItems":1,"maxItems":1},"returns":{"type":"null"}},"required":["params","returns"]},"api_AdbCtrlApi_GetConfig":{"type":"object","properties":{"params":{"type":"array","minItems":0,"maxItems":0},"returns":{"$ref":"#/definitions/AdbProcessConfig"}},"required":["params","returns"]},"api_AdbCtrlApi_CreateDb":{"type":"object","properties":{"params":{"type":"array","items":{"$ref":"#/definitions/DbSettings"},"minItems":1,"maxItems":1},"returns":{"$ref":"#/definitions/DbInfo"}},"required":["params","returns"]},"api_AdbCtrlApi_GetOrCreateDb":{"type":"object","properties":{"params":{"type":"array","minItems":2,"items":[{"type":"string"},{"$ref":"#/definitions/DbSettings"}],"maxItems":2},"returns":{"$ref":"#/definitions/DbInfo"}},"required":["params","returns"]},"api_AdbCtrlApi_ConfigureDb":{"type":"object","properties":{"params":{"type":"array","minItems":2,"items":[{"type":"string"},{"$ref":"#/definitions/DbSettings"}],"maxItems":2},"returns":{"type":"null"}},"required":["params","returns"]},"api_AdbCtrlApi_GetDbConfig":{"type":"object","properties":{"params":{"type":"array","items":{"type":"string"},"minItems":1,"maxItems":1},"returns":{"$ref":"#/definitions/DbSettings"}},"required":["params","returns"]},"api_AdbCtrlApi_ListDbs":{"type":"object","properties":{"params":{"type":"array","minItems":0,"maxItems":0},"returns":{"type":"array","items":{"$ref":"#/definitions/DbSettings"}}},"required":["params","returns"]}}};
+const EXPORT_MAP = {"methods":{"init":"#/definitions/api_AdbCtrlApi_Init","getConfig":"#/definitions/api_AdbCtrlApi_GetConfig","createDb":"#/definitions/api_AdbCtrlApi_CreateDb","getOrCreateDb":"#/definitions/api_AdbCtrlApi_GetOrCreateDb","configureDb":"#/definitions/api_AdbCtrlApi_ConfigureDb","getDbConfig":"#/definitions/api_AdbCtrlApi_GetDbConfig","listDbs":"#/definitions/api_AdbCtrlApi_ListDbs"},"events":{}};
 
 export default class AdbCtrlApiClient extends ApiBrokerClient {
   constructor() {
     super("atek.cloud/adb-ctrl-api", SCHEMAS, EXPORT_MAP)
   }
 
-  init(settings: AdbSettings): Promise<void> {
-    return this._rpc("init", [settings])
+  init(config: AdbProcessConfig): Promise<void> {
+    return this._rpc("init", [config])
   }
 
-  getConfig(): Promise<AdbSettings> {
+  getConfig(): Promise<AdbProcessConfig> {
     return this._rpc("getConfig", [])
+  }
+
+  createDb(opts: DbSettings): Promise<DbInfo> {
+    return this._rpc("createDb", [opts])
+  }
+
+  getOrCreateDb(alias: string, opts: DbSettings): Promise<DbInfo> {
+    return this._rpc("getOrCreateDb", [alias, opts])
+  }
+
+  configureDb(dbId: string, config: DbSettings): Promise<void> {
+    return this._rpc("configureDb", [dbId, config])
+  }
+
+  getDbConfig(dbId: string): Promise<DbSettings> {
+    return this._rpc("getDbConfig", [dbId])
+  }
+
+  listDbs(): Promise<DbSettings[]> {
+    return this._rpc("listDbs", [])
   }
 }
 
-export interface AdbSettings {
+export interface AdbProcessConfig {
   serverDbId: string;
+}
+
+export interface DbInfo {
+  dbId: string;
+}
+
+export interface DbSettings {
+  type?: DbInternalType;
+  alias?: string;
+  displayName?: string;
+  tables?: string[];
+  network?: NetworkSettings;
+  persist?: boolean;
+  presync?: boolean;
+}
+
+export interface NetworkSettings {
+  access?: string;
+}
+
+export enum DbInternalType {
+  HYPERBEE = 'hyperbee'
 }

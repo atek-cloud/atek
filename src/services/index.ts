@@ -245,7 +245,7 @@ export function stopAll (): void {
   }
 }
 
-export async function checkForPackageUpdates (id: string): Promise<object> {
+export async function checkForPackageUpdates (id: string): Promise<{hasUpdate: boolean, installedVersion: string, latestVersion: string}> {
   const record = await serverdb.services.get(id)
   if (!record?.value) {
     throw new Error(`App ${id} not found`)
@@ -254,12 +254,12 @@ export async function checkForPackageUpdates (id: string): Promise<object> {
   const latestVersion = await git.getLatestVersion(id, record.value.desiredVersion || 'latest')
   return {
     hasUpdate: latestVersion !== record.value.package.installedVersion,
-    installedVersion: record.value.package.installedVersion,
+    installedVersion: record.value.package.installedVersion || 'latest',
     latestVersion
   }
 }
 
-export async function updatePackage (id: string): Promise<object> {
+export async function updatePackage (id: string): Promise<{installedVersion: string, oldVersion: string}> {
   const record = await serverdb.services.get(id)
   if (!record?.value) {
     throw new Error(`App ${id} not found`)
@@ -277,7 +277,7 @@ export async function updatePackage (id: string): Promise<object> {
     await npm.setupPackage(id, getInstallPath(id, record.value.sourceUrl))
   }
 
-  const oldVersion = record.value.package.installedVersion
+  const oldVersion = record.value.package.installedVersion || ''
   record.value.manifest = manifest
   record.value.package.installedVersion = latestVersion
   await serverdb.services.put(id, record.value)

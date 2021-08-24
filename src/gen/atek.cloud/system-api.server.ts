@@ -9,10 +9,13 @@ import { ApiBrokerServer, ApiBrokerServerHandlers } from '@atek-cloud/api-broker
 
 export const ID = "atek.cloud/system-api";
 export const REVISION = undefined;
-const SCHEMAS = {"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"SystemApi":{"type":"object"},"Bucket":{"type":"object","properties":{"id":{"type":"string"},"type":{"$ref":"#/definitions/BucketTypeEnum"},"title":{"type":"string"},"items":{"type":"array","items":{"$ref":"#/definitions/BucketChild"}}},"required":["id","type","title","items"]},"BucketTypeEnum":{"type":"string","enum":["bucket:root","bucket:app","bucket:trash","db"]},"BucketChild":{"type":"object","properties":{"id":{"type":"string"},"type":{"$ref":"#/definitions/BucketTypeEnum"},"title":{"type":"string"}},"required":["id","type","title"]},"api_SystemApi_GetBucket":{"type":"object","properties":{"params":{"type":"array","items":{"type":"string"},"minItems":1,"maxItems":1},"returns":{"$ref":"#/definitions/Bucket"}},"required":["params","returns"]}}};
-const EXPORT_MAP = {"methods":{"getBucket":"#/definitions/api_SystemApi_GetBucket"},"events":{}};
+export const SCHEMAS = {"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"SystemApi":{"type":"object"},"Bucket":{"type":"object","properties":{"id":{"type":"string"},"type":{"$ref":"#/definitions/BucketTypeEnum"},"title":{"type":"string"},"items":{"type":"array","items":{"$ref":"#/definitions/BucketChild"}}},"required":["id","type","title","items"]},"BucketTypeEnum":{"type":"string","enum":["bucket:root","bucket:app","bucket:trash","db"]},"BucketChild":{"type":"object","properties":{"id":{"type":"string"},"type":{"$ref":"#/definitions/BucketTypeEnum"},"title":{"type":"string"}},"required":["id","type","title"]},"api_SystemApi_GetBucket":{"type":"object","properties":{"params":{"type":"array","items":{"type":"string"},"minItems":1,"maxItems":1},"returns":{"$ref":"#/definitions/Bucket"}},"required":["params","returns"]}}};
+export const EXPORT_MAP = {"methods":{"getBucket":"#/definitions/api_SystemApi_GetBucket"},"events":{}};
 
 export default class SystemApiServer extends ApiBrokerServer {
+  ID = "atek.cloud/system-api";
+  REVISION = undefined;
+
   constructor(handlers: ApiBrokerServerHandlers) {
     super(SCHEMAS, EXPORT_MAP, handlers)
   }

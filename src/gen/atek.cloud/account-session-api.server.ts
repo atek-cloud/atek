@@ -9,10 +9,13 @@ import { ApiBrokerServer, ApiBrokerServerHandlers } from '@atek-cloud/api-broker
 
 export const ID = "atek.cloud/account-session-api";
 export const REVISION = undefined;
-const SCHEMAS = {"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"AccountSessionApi":{"type":"object"},"WhoamiResponse":{"type":"object","properties":{"hasSession":{"type":"boolean"},"account":{"type":"object","properties":{"id":{"type":"string"},"username":{"type":"string"}},"required":["id","username"]}},"required":["hasSession"]},"api_AccountSessionApi_Whoami":{"type":"object","properties":{"params":{"type":"array","minItems":0,"maxItems":0},"returns":{"$ref":"#/definitions/WhoamiResponse"}},"required":["params","returns"]},"api_AccountSessionApi_Login":{"type":"object","properties":{"params":{"type":"array","items":{"type":"object","properties":{"username":{"type":"string"},"password":{"type":"string"}},"required":["username","password"]},"minItems":1,"maxItems":1},"returns":{"type":"null"}},"required":["params","returns"]},"api_AccountSessionApi_Logout":{"type":"object","properties":{"params":{"type":"array","minItems":0,"maxItems":0},"returns":{"type":"null"}},"required":["params","returns"]}}};
-const EXPORT_MAP = {"methods":{"whoami":"#/definitions/api_AccountSessionApi_Whoami","login":"#/definitions/api_AccountSessionApi_Login","logout":"#/definitions/api_AccountSessionApi_Logout"},"events":{}};
+export const SCHEMAS = {"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"AccountSessionApi":{"type":"object"},"WhoamiResponse":{"type":"object","properties":{"hasSession":{"type":"boolean"},"account":{"type":"object","properties":{"id":{"type":"string"},"username":{"type":"string"}},"required":["id","username"]}},"required":["hasSession"]},"api_AccountSessionApi_Whoami":{"type":"object","properties":{"params":{"type":"array","minItems":0,"maxItems":0},"returns":{"$ref":"#/definitions/WhoamiResponse"}},"required":["params","returns"]},"api_AccountSessionApi_Login":{"type":"object","properties":{"params":{"type":"array","items":{"type":"object","properties":{"username":{"type":"string"},"password":{"type":"string"}},"required":["username","password"]},"minItems":1,"maxItems":1},"returns":{"type":"null"}},"required":["params","returns"]},"api_AccountSessionApi_Logout":{"type":"object","properties":{"params":{"type":"array","minItems":0,"maxItems":0},"returns":{"type":"null"}},"required":["params","returns"]}}};
+export const EXPORT_MAP = {"methods":{"whoami":"#/definitions/api_AccountSessionApi_Whoami","login":"#/definitions/api_AccountSessionApi_Login","logout":"#/definitions/api_AccountSessionApi_Logout"},"events":{}};
 
 export default class AccountSessionApiServer extends ApiBrokerServer {
+  ID = "atek.cloud/account-session-api";
+  REVISION = undefined;
+
   constructor(handlers: ApiBrokerServerHandlers) {
     super(SCHEMAS, EXPORT_MAP, handlers)
   }
