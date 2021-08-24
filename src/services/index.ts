@@ -222,7 +222,7 @@ export async function loadCoreService (params: InstallParams): Promise<ServiceIn
     },
     installedBy: 'system'
   }
-  const inst = await load(recordValue)
+  const inst = await load(recordValue, params.config)
   if (!inst) throw new Error('Failed to load core service')
   return inst
 }

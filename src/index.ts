@@ -7,13 +7,15 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import * as repl from './repl/index.js'
 import { Config, ConfigValues } from './config.js'
-// import * as db from './db/index.js' TODO
 import * as services from './services/index.js'
 import * as serverdb from './serverdb/index.js'
 import * as sessionMiddleware from './httpapi/session-middleware.js'
 import * as apiGatewayHttpApi from './httpapi/gateway.js'
+import * as apiBroker from '@atek-cloud/api-broker'
+import InspectApiServer from './gen/atek.cloud/inspect-api.server.js'
 // import * as perf from './lib/perf.js' TODO
 // import * as metrics from './lib/metrics.js' TODO
+import fs from 'fs'
 import * as path from 'path'
 import { fileURLToPath } from 'url'
 import * as os from 'os'
@@ -25,9 +27,6 @@ const INSTALL_JSON_FORMS_PATH = path.join(INSTALL_PATH, '..', 'frontend', 'json-
 
 let app
 
-let _serverReadyCb: ((value: unknown) => void)
-export const whenServerReady = new Promise(r => {_serverReadyCb = r})
-
 interface StartOpts extends ConfigValues {
   configDir: string
 }
@@ -38,17 +37,35 @@ declare module 'ws' {
 }
 
 export async function start (opts: StartOpts) {
+  let isReady = false
   const configDir = opts.configDir || path.join(os.homedir(), '.atek')
-  let config = new Config(configDir, opts)
+  const config = new Config(configDir, opts)
   Config.setActiveConfig(config)
+  await fs.promises.mkdir(path.join(configDir, 'logs'), {recursive: true})
+  await fs.promises.mkdir(path.join(configDir, 'packages'), {recursive: true})
   // if (config.benchmarkMode) {
   //   perf.enable() TODO
   // }
   // metrics.setup({configDir: opts.configDir}) TODO
-  if (config.debugMode) console.log('Debug mode enabled')
 
   repl.setup()
   const server = createServer(config)
+
+  // export inspector api
+  const inspectApiServer = new InspectApiServer({
+    isReady: () => isReady,
+    getConfig: () => config.values
+  })
+  const systemApiProvider = {
+    id: 'system',
+    handleRpc (callDesc: apiBroker.CallDescription, methodName: string, params: any[]): Promise<any> {
+      if (callDesc.api === 'atek.cloud/inspect-api') {
+        return inspectApiServer.handle(callDesc, methodName, params)
+      }
+      throw new Error('API not found')
+    }
+  }
+  apiBroker.registerProvider(systemApiProvider, apiBroker.TransportEnum.RPC, 'atek.cloud/inspect-api')
 
   // initiate the services layer
   await services.setup()
@@ -65,7 +82,7 @@ export async function start (opts: StartOpts) {
     process.exit(0)
   }
 
-  _serverReadyCb(undefined)
+  isReady = true
   return {
     server,
     close: () => {

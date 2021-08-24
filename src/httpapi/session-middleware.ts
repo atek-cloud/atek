@@ -1,5 +1,6 @@
 import * as express from 'express'
 import { v4 as uuidv4 } from 'uuid'
+import { Config } from '../config.js'
 import * as serverdb from '../serverdb/index.js'
 import * as services from '../services/index.js'
 
@@ -75,11 +76,12 @@ export function setup () {
         }
       }
     } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
-      const srv = services.getByBearerToken(req.headers.authorization.split(' ')[1])
+      const token = req.headers.authorization.split(' ')[1]
+      const srv = services.getByBearerToken(token)
       if (srv) {
-        auth = {
-          appId: srv.id
-        }
+        auth = {appId: srv.id}
+      } else if (Config.getActiveConfig().systemAuthTokens.includes(token)){
+        auth = {appId: 'system'}
       }
     }
     req.session = new Session(req, res, auth)

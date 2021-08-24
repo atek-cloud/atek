@@ -12,13 +12,9 @@ const PACKAGE_JSON_PATH = path.join(path.dirname(fileURLToPath(import.meta.url))
 
 function startCommand (args: any): void {
   server.start({
-    simulateHyperspace: false,
-    debugMode: false,
     port: args.port,
     domain: args.domain,
-    configDir: args.configDir,
-    hyperspaceHost: args.hyperspaceHost,
-    hyperspaceStorage: args.hyperspaceStorage,
+    configDir: args.configDir
   })
 }
 
@@ -27,22 +23,6 @@ const match = subcommand({
     {
       name: 'start',
       command: startCommand
-    },
-    {
-      name: 'start-test',
-      command: (args: any) => {
-        if (!args.configDir) throw new Error('--configDir required')
-        if (!args.domain) throw new Error('--domain required')
-        server.start({
-          simulateHyperspace: true,
-          debugMode: true,
-          port: args.port,
-          domain: args.domain,
-          configDir: args.configDir,
-          hyperspaceHost: undefined,
-          hyperspaceStorage: undefined
-        })
-      }
     },
     {
       name: 'repl',

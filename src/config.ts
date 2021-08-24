@@ -1,6 +1,5 @@
 import * as path from 'path'
 import * as fs from 'fs'
-import * as os from 'os'
 import { InstallParams } from './services/index.js'
 
 export const DEFAULT_REPL_PORT = 2999
@@ -24,12 +23,9 @@ const DEFAULT_CORE_SERVICES: InstallParams[] = [
 export interface ConfigValues {
   domain?: string
   port?: number
-  debugMode?: boolean
-  simulateHyperspace?: boolean
-  hyperspaceHost?: string
-  hyperspaceStorage?: string
   serverDbId?: string
   coreServices?: InstallParams[]
+  systemAuthTokens?: string[]
 }
 
 export class Config implements ConfigValues {
@@ -68,10 +64,6 @@ export class Config implements ConfigValues {
     return path.join(this.configDir, 'logs', `${id}.log`)
   }
 
-  schemaInstallPath (domain: string): string {
-    return path.join(this.configDir, 'schemas', domain)
-  }
-
   get domain () {
     return this.overrides.domain || this.values.domain || undefined
   }
@@ -80,28 +72,16 @@ export class Config implements ConfigValues {
     return this.overrides.port || this.values.port || DEFAULT_HOST_PORT
   }
 
-  get debugMode () {
-    return this.overrides.debugMode || this.values.debugMode || false
-  }
-
-  get simulateHyperspace () {
-    return this.overrides.simulateHyperspace || this.values.simulateHyperspace || undefined
-  }
-
-  get hyperspaceHost () {
-    return this.overrides.hyperspaceHost || this.values.hyperspaceHost || undefined
-  }
-
-  get hyperspaceStorage () {
-    return this.overrides.hyperspaceStorage || this.values.hyperspaceStorage || path.join(os.homedir(), '.hyperspace/storage')
-  }
-
   get serverDbId () {
     return this.overrides.serverDbId || this.values.serverDbId || undefined
   }
 
   get coreServices () {
     return this.overrides.coreServices || this.values.coreServices || DEFAULT_CORE_SERVICES
+  }
+
+  get systemAuthTokens () {
+    return this.overrides.systemAuthTokens || this.values.systemAuthTokens || []
   }
 
   isOverridden (key: string): boolean {
