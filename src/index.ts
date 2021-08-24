@@ -36,6 +36,8 @@ declare module 'ws' {
   class WebSocketServer extends ws.Server {}
 }
 
+export * as test from './test.js'
+
 export async function start (opts: StartOpts) {
   let isReady = false
   const configDir = opts.configDir || path.join(os.homedir(), '.atek')

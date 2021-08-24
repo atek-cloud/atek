@@ -1,5 +1,5 @@
 import test from 'ava'
-import { startAtek } from './_util/index.js'
+import * as atek from '../dist/index.js'
 
 let inst: any
 let activeCfg: any
@@ -8,7 +8,7 @@ test.after(async () => {
 })
 
 test.serial('Correctly loads core services (hyper, adb) and creates server db', async t => {
-  const cfg = {
+  const cfg = new atek.test.Config({
     coreServices: [
       {
         sourceUrl: 'https://github.com/atek-cloud/hyper-daemon',
@@ -16,8 +16,8 @@ test.serial('Correctly loads core services (hyper, adb) and creates server db', 
       },
       {sourceUrl: 'https://github.com/atek-cloud/adb'}
     ]
-  }
-  inst = await startAtek(cfg)
+  })
+  inst = await atek.test.startAtek(cfg)
 
   activeCfg = await inst.apis.inspect('getConfig')
   t.truthy(activeCfg.serverDbId, 'Server DB ID was created')
