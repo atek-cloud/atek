@@ -11,7 +11,7 @@ test.serial('Correctly loads core services (hyper, adb) and creates server db', 
   const cfg = {
     coreServices: [
       {
-        sourceUrl: 'file:///Users/paulfrazee/work/atek/hyper-daemon', //'https://github.com/atek-cloud/hyper-daemon',
+        sourceUrl: 'https://github.com/atek-cloud/hyper-daemon',
         config: {SIMULATE_HYPERSPACE: '1'}
       },
       {sourceUrl: 'https://github.com/atek-cloud/adb'}
