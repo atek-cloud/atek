@@ -4,7 +4,7 @@ import { spawn, ChildProcess } from 'child_process'
 import tmp from 'tmp'
 import path from 'path'
 import fs from 'fs'
-import { fileURLToPath } from 'url'
+import { fileURLToPath, URLSearchParams } from 'url'
 import fetch from 'node-fetch'
 import jsonrpc from 'jsonrpc-lite'
 import { generateBearerToken } from './lib/crypto.js'
@@ -36,21 +36,21 @@ export class Config implements ConfigValues {
   }
 }
 
-export interface TestAPIs {
-  [key: string]: (method: string, params: any[]) => Promise<any>
-}
-
 export class TestInstance {
   url: string
-  apis: TestAPIs
   process: ChildProcess
   tmpdir: tmp.DirResult
+  authToken: string
 
-  constructor (url: string, apis: TestAPIs, process: ChildProcess, tmpdir: tmp.DirResult) {
+  constructor (url: string, process: ChildProcess, tmpdir: tmp.DirResult, authToken: string) {
     this.url = url
-    this.apis = apis
     this.process = process
     this.tmpdir = tmpdir
+    this.authToken = authToken
+  }
+
+  api (apiDesc: string|NodeJS.Dict<string>) {
+    return createApi(apiDesc, this.authToken)
   }
 
   async close () {
@@ -81,24 +81,22 @@ export async function startAtek (config: Config = new Config()) {
     }
   )
 
-  const apis = {
-    inspect: createRpc('atek.cloud/inspect-api', authToken),
-    adb: createRpc('atek.cloud/adb-api', authToken)
-  }
+  const inspect = createApi('atek.cloud/inspect-api', authToken)
   let isReady = false
   for (let i = 0; i < 100; i++) {
-    isReady = await apis.inspect('isReady').then((v) => v, (err) => false)
+    isReady = await inspect('isReady').then((v) => v, (err) => false)
     if (isReady) break
     await new Promise(r => setTimeout(r, 1e3))
   }
   if (!isReady) throw new Error('Server failed to start')
 
-  return new TestInstance(`http://localhost:${PORT}/`, apis, serverProcess, cfgDir)
+  return new TestInstance(`http://localhost:${PORT}/`, serverProcess, cfgDir, authToken)
 }
 
 let _id = 1
-function createRpc (api: string, authToken: string) {
-  const url = `http://localhost:${PORT}/_api/gateway?api=${api}`
+function createApi (apiDesc: string|NodeJS.Dict<string>, authToken: string) {
+  const qp = new URLSearchParams(typeof apiDesc === 'string' ? {api: apiDesc} : apiDesc)
+  const url = `http://localhost:${PORT}/_api/gateway?${qp.toString()}`
 
   return async (methodName: string, params: any[] = []): Promise<any> => {
     const responseBody = await (await fetch(url, {
