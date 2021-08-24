@@ -8,6 +8,7 @@
     "module": "es2020",
     "moduleResolution": "node",
     "target": "es2020",
+    "declaration": true,
     
     "checkJs": true,
     "strict": true,
