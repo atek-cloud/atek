@@ -323,11 +323,11 @@ async function fetchPackage (params: InstallParams) {
 async function readManifestFile (id: string, sourceUrl: string): Promise<ServiceManifest | undefined> {
   try {
     const installPath = getInstallPath(id, sourceUrl)
-    const obj = JSON.parse(await fsp.readFile(path.join(installPath, 'app.json'), 'utf8'))
+    const obj = JSON.parse(await fsp.readFile(path.join(installPath, 'atek.json'), 'utf8'))
     assertIsManifest(obj)
     return obj
   } catch (e) {
-    console.error(`No valid app.json manifest file found for`, sourceUrl)
+    console.error(`No valid atek.json manifest file found for`, sourceUrl)
     console.error(e)
     return undefined
   }
