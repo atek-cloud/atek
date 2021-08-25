@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url'
 import { Config } from '../config.js'
 import { generateBearerToken } from '../lib/crypto.js'
 import { joinPath } from '../lib/strings.js'
+import { removeUndefinedsAtEndOfArray } from '../lib/functions.js'
 import lock from '../lib/lock.js'
 import fetch from 'node-fetch'
 import WebSocket, { createWebSocketStream } from 'ws'
@@ -192,7 +193,7 @@ export class ServiceInstance extends EventEmitter {
       const responseBody = await (await fetch(url, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(jsonrpc.request(_id++, methodName, params))
+        body: JSON.stringify(jsonrpc.request(_id++, methodName, removeUndefinedsAtEndOfArray(params)))
       })).json()
       const parsed = jsonrpc.parseObject(responseBody)
       if (parsed.type === 'error') {
