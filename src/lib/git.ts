@@ -4,6 +4,11 @@ import * as fs from 'fs'
 import { Config } from '../config.js'
 import semver from 'semver'
 
+export interface PackageVersion {
+  version: string
+  tag: string
+}
+
 export async function clone (id: string, url: string): Promise<string> {
   const dir = Config.getActiveConfig().packageInstallPath(id)
   await fs.promises.mkdir(dir, {recursive: true})
@@ -28,19 +33,19 @@ export async function checkout (id: string, version: string): Promise<void> {
   await git.checkout({fs, dir, ref: version})
 }
 
-export async function listVersions (id: string): Promise<string[]> {
+export async function listVersions (id: string): Promise<PackageVersion[]> {
   const dir = Config.getActiveConfig().packageInstallPath(id)
   const tags = await git.listTags({fs, dir})
   return tags
-    .map((tag: string) => semver.valid(semver.coerce(tag)))
-    .filter(tag => typeof tag === 'string') as string[]
+    .map((tag: string) => ({tag, version: (semver.valid(semver.coerce(tag)) as string)}))
+    .filter(v => typeof v.version === 'string')
 }
 
 export async function getLatestVersion (id: string, spec: string): Promise<string> {
-  let tags = await listVersions(id)
+  let versions = await listVersions(id)
   if (spec && spec !== 'latest') {
-    tags = tags.filter(tag => semver.satisfies(tag, spec))
+    versions = versions.filter(tag => semver.satisfies(tag.version, spec))
   }
-  tags = tags.sort((a, b) => semver.rcompare(a, b))
-  return tags[0]
+  versions = versions.sort((a, b) => semver.rcompare(a.version, b.version))
+  return versions[0].tag
 }
