@@ -102,9 +102,6 @@ export interface ServiceRecord {
       author?: string
       license?: string
     };
-  system: {
-      appPort: number
-    };
   installedBy: string;
 }
 

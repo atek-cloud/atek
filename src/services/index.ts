@@ -126,9 +126,6 @@ export async function install (params: InstallParams, authedUsername: string): P
       installedVersion
     },
     manifest,
-    system: {
-      appPort: await getAvailablePort()
-    },
     config: params.config,
     installedBy: authedUsername
   }
@@ -222,9 +219,6 @@ export async function loadCoreService (params: InstallParams): Promise<ServiceIn
       installedVersion
     },
     manifest,
-    system: {
-      appPort: await getAvailablePort(true)
-    },
     installedBy: 'system'
   }
   const inst = await load(recordValue, params.config)
