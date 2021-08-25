@@ -60,7 +60,10 @@ export async function start (opts: StartOpts) {
   await services.setup()
   await services.loadCoreServices()
   await serverdb.setup()
-  await services.loadUserServices()
+  /* dont await */services.loadUserServices().catch(err => {
+    console.log('Error while loading user services:')
+    console.log(err)
+  })
 
   // setup rpc apis
   rpcapi.setup()
