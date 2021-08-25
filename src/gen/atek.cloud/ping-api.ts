@@ -9,15 +9,13 @@ import { ApiBrokerClient } from '@atek-cloud/api-broker';
 
 export const ID = "atek.cloud/ping-api";
 export const REVISION = undefined;
-const SCHEMAS = {"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"PingApi":{"type":"object"},"api_PingApi_Ping":{"type":"object","properties":{"params":{"type":"array","items":{"type":"number"},"minItems":1,"maxItems":1},"returns":{"type":"number"}},"required":["params","returns"]}}};
-const EXPORT_MAP = {"methods":{"ping":"#/definitions/api_PingApi_Ping"},"events":{}};
 
 export default class PingApiClient extends ApiBrokerClient {
   constructor() {
-    super("atek.cloud/ping-api", SCHEMAS, EXPORT_MAP)
+    super("atek.cloud/ping-api")
   }
 
   ping(param: number): Promise<number> {
-    return this._rpc("ping", [param])
+    return this.$rpc("ping", [param])
   }
 }

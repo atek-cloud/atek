@@ -17,6 +17,6 @@ export default class InspectApiServer extends ApiBrokerServer {
   REVISION = undefined;
 
   constructor(handlers: ApiBrokerServerHandlers) {
-    super(SCHEMAS, EXPORT_MAP, handlers)
+    super(handlers, SCHEMAS, EXPORT_MAP)
   }
 }

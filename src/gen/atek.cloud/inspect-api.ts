@@ -9,19 +9,17 @@ import { ApiBrokerClient } from '@atek-cloud/api-broker';
 
 export const ID = "atek.cloud/inspect-api";
 export const REVISION = undefined;
-const SCHEMAS = {"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"InspectApi":{"type":"object"},"api_InspectApi_IsReady":{"type":"object","properties":{"params":{"type":"array","minItems":0,"maxItems":0},"returns":{"type":"boolean"}},"required":["params","returns"]},"api_InspectApi_GetConfig":{"type":"object","properties":{"params":{"type":"array","minItems":0,"maxItems":0},"returns":{"type":"object"}},"required":["params","returns"]}}};
-const EXPORT_MAP = {"methods":{"isReady":"#/definitions/api_InspectApi_IsReady","getConfig":"#/definitions/api_InspectApi_GetConfig"},"events":{}};
 
 export default class InspectApiClient extends ApiBrokerClient {
   constructor() {
-    super("atek.cloud/inspect-api", SCHEMAS, EXPORT_MAP)
+    super("atek.cloud/inspect-api")
   }
 
   isReady(): Promise<boolean> {
-    return this._rpc("isReady", [])
+    return this.$rpc("isReady", [])
   }
 
   getConfig(): Promise<object> {
-    return this._rpc("getConfig", [])
+    return this.$rpc("getConfig", [])
   }
 }

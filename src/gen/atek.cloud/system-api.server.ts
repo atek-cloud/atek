@@ -17,6 +17,6 @@ export default class SystemApiServer extends ApiBrokerServer {
   REVISION = undefined;
 
   constructor(handlers: ApiBrokerServerHandlers) {
-    super(SCHEMAS, EXPORT_MAP, handlers)
+    super(handlers, SCHEMAS, EXPORT_MAP)
   }
 }
