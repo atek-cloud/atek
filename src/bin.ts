@@ -62,13 +62,25 @@ const match = subcommand({
     {
       name: 'ls',
       command: async (args: any) => {
-        console.log((await apiCall(args, 'atek.cloud/services-api', 'list', [])).services)
+        const {services} = await apiCall(args, 'atek.cloud/services-api', 'list', [])
+        const out: NodeJS.Dict<object> = {}
+        for (const srv of services) {
+          out[srv.settings.id] = {
+            Status: srv.status,
+            Port: srv.settings.port,
+            Source: srv.settings.sourceUrl,
+            'Installed by': srv.settings.installedBy
+          }
+        }
+        console.table(out)
       }
     },
     {
       name: 'get',
       command: async (args: any) => {
-        console.log(await apiCall(args, 'atek.cloud/services-api', 'get', [args.id || args._[0]]))
+        const srv = await apiCall(args, 'atek.cloud/services-api', 'get', [args.id || args._[0]])
+        console.log(srv.settings.id, `(${srv.status})`)
+        console.log(srv.settings)
       }
     },
     {
