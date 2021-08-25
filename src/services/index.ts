@@ -112,7 +112,7 @@ export async function install (params: InstallParams, authedUsername: string): P
 
   const {sourceType, installedVersion} = await fetchPackage(params)
   const manifest = await readManifestFile(params.id, params.sourceUrl)
-  if (manifest?.runtime === 'node') {
+  if (manifest?.runtime === 'node' && sourceType !== 'file') {
     await npm.setupPackage(params.id, getInstallPath(params.id, params.sourceUrl))
   }
 
@@ -208,7 +208,7 @@ export async function loadCoreService (params: InstallParams): Promise<ServiceIn
 
   const {sourceType, installedVersion} = await fetchPackage(params)
   const manifest = await readManifestFile(params.id, params.sourceUrl)
-  if (manifest?.runtime === 'node') {
+  if (manifest?.runtime === 'node' && sourceType !== 'file') {
     await npm.setupPackage(params.id, getInstallPath(params.id, params.sourceUrl))
   }
 
@@ -278,7 +278,7 @@ export async function updatePackage (id: string): Promise<{installedVersion: str
   await git.checkout(id, latestVersion)
 
   const manifest = await readManifestFile(id, record.value.sourceUrl)
-  if (manifest?.runtime === 'node') {
+  if (manifest?.runtime === 'node' && record.value.package.sourceType !== SourceTypeEnum.file) {
     await npm.setupPackage(id, getInstallPath(id, record.value.sourceUrl))
   }
 
