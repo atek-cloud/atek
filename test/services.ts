@@ -11,20 +11,12 @@ test.after(async () => {
 })
 
 test.serial('Load test instance', async t => {
-  const cfg = new atek.test.Config({
-    coreServices: [
-      {
-        sourceUrl: 'https://github.com/atek-cloud/hyper-daemon',
-        config: {SIMULATE_HYPERSPACE: '1'}
-      },
-      {sourceUrl: 'https://github.com/atek-cloud/adb'}
-    ]
-  })
+  const cfg = new atek.test.Config()
   inst = await atek.test.startAtek(cfg)
   t.pass('Test instance loaded')
 })
 
-test('Install, configure, and uninstall a service', async t => {
+test.serial('Install, configure, and uninstall a service', async t => {
   const srvapi = await inst.api('atek.cloud/services-api')
   
   const {services} = await srvapi('list')
@@ -48,6 +40,29 @@ test('Install, configure, and uninstall a service', async t => {
   t.deepEqual(installRes, getRes, 'get() provies correct info')
 
   await srvapi('uninstall', [installRes.settings.id])
+  const {services: services3} = await srvapi('list')
+  t.is(services3.length, 2, 'Uninstall successful')
+})
+
+test.serial('Change a service ID after install', async t => {
+  const srvapi = await inst.api('atek.cloud/services-api')
+  
+  const {services} = await srvapi('list')
+  t.is(services.length, 2, 'Only 2 core services active initially')
+
+  const installRes = await srvapi('install', [{id: 'test1', sourceUrl: `file://${SIMPLE_APP_PATH}`}])
+  t.is(installRes.status, 'active', 'New service is active')
+  t.is(installRes.settings.id, 'test1', 'ID is correct')
+
+  const getRes1 = await srvapi('get', ['test1'])
+  t.is(getRes1.settings.id, 'test1', 'Initial ID is correct')
+
+  await srvapi('configure', ['test1', {id: 'test2'}])
+
+  const getRes2 = await srvapi('get', ['test2'])
+  t.is(getRes2.settings.id, 'test2', 'ID is correctly changed')
+
+  await srvapi('uninstall', ['test2'])
   const {services: services3} = await srvapi('list')
   t.is(services3.length, 2, 'Uninstall successful')
 })

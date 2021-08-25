@@ -7,7 +7,7 @@ import * as path from 'path'
 import { promises as fsp } from 'fs'
 import { Config } from '../config.js'
 import lock from '../lib/lock.js'
-import { sourceUrlToId, getAvailableId, getAvailablePort } from './util.js'
+import { sourceUrlToId, getAvailableId, getAvailablePort, getServiceRecordById } from './util.js'
 import { createValidator } from '../schemas/util.js'
 import AtekService, { SourceTypeEnum, RuntimeEnum, ServiceConfig } from '../gen/atek.cloud/service.js'
 import AdbCtrlApi from '../gen/atek.cloud/adb-ctrl-api.js'
@@ -46,6 +46,7 @@ export interface InstallParams {
 
 export interface UpdateParams {
   sourceUrl?: string
+  id?: string
   port?: number
   desiredVersion?: string
   config?: ServiceConfig
@@ -96,80 +97,99 @@ export async function loadUserServices (): Promise<void> {
 }
 
 export async function install (params: InstallParams, authedUsername: string): Promise<ServiceInstance> {
+  let recordValue
   if (!params.sourceUrl) {
     throw new Error('Source URL is required')
   }
-  if (params.id && await serverdb.services.get(params.id)) {
-    throw new Error('App already exists under the name: ' + params.id)
+  if (params.id && await getServiceRecordById(params.id).catch(e => undefined)) {
+    throw new Error('App already exists under the ID: ' + params.id)
   }
 
   if (!params.id) {
     params.id = await getAvailableId(params.sourceUrl)
   }
-  if (!params.port) {
-    params.port = await getAvailablePort()
-  }
 
-  const {sourceType, installedVersion} = await fetchPackage(params)
-  const manifest = await readManifestFile(params.id, params.sourceUrl)
-  if (manifest?.runtime === 'node' && sourceType !== 'file') {
-    await npm.setupPackage(params.id, getInstallPath(params.id, params.sourceUrl))
-  }
+  const release = await lock(`services:${params.id}:ctrl`)
+  try {
+    if (!params.port) {
+      params.port = await getAvailablePort()
+    }
 
-  const recordValue = {
-    id: params.id,
-    port: params.port,
-    sourceUrl: params.sourceUrl,
-    desiredVersion: params.desiredVersion,
-    package: {
-      sourceType: sourceType as SourceTypeEnum,
-      installedVersion
-    },
-    manifest,
-    config: params.config,
-    installedBy: authedUsername
+    const {sourceType, installedVersion} = await fetchPackage(params)
+    const manifest = await readManifestFile(params.id, params.sourceUrl)
+    if (manifest?.runtime === 'node' && sourceType !== 'file') {
+      await npm.setupPackage(params.id, getInstallPath(params.id, params.sourceUrl))
+    }
+
+    recordValue = {
+      id: params.id,
+      port: params.port,
+      sourceUrl: params.sourceUrl,
+      desiredVersion: params.desiredVersion,
+      package: {
+        sourceType: sourceType as SourceTypeEnum,
+        installedVersion
+      },
+      manifest,
+      config: params.config,
+      installedBy: authedUsername
+    }
+    await serverdb.services.create(recordValue)
+  } finally {
+    release()
   }
-  await serverdb.services.put(params.id, recordValue)
   const inst = await load(recordValue)
   if (!inst) throw new Error('Failed to load installed service')
   return inst
 }
 
 export async function updateConfig (id: string, params: UpdateParams): Promise<void> {
-  const record = await serverdb.services.get(id)
-  if (!record?.value) {
-    throw new Error(`App ${id} not found`)
-  }
+  const release = await lock(`services:${id}:ctrl`)
+  try {
+    const record = await getServiceRecordById(id)
 
-  if (typeof params.port === 'number') record.value.port = params.port
-  if (typeof params.sourceUrl === 'string') record.value.sourceUrl = params.sourceUrl
-  if (typeof params.desiredVersion === 'string') record.value.desiredVersion = params.desiredVersion
-  if (params.config) {
-    record.value.config = record.value.config ?? {}
-    Object.assign(record.value.config, params.config)
-  }
+    const isIdChanged = typeof params.id === 'string' && params.id && params.id !== id
+    if (isIdChanged && params.id) {
+      if (await getServiceRecordById(params.id).catch(e => undefined)) {
+        throw new Error('App already exists under the ID: ' + params.id)
+      }
+      record.value.id = params.id
+    }
+    if (typeof params.port === 'number') record.value.port = params.port
+    if (typeof params.sourceUrl === 'string') record.value.sourceUrl = params.sourceUrl
+    if (typeof params.desiredVersion === 'string') record.value.desiredVersion = params.desiredVersion
+    if (params.config) {
+      record.value.config = record.value.config ?? {}
+      Object.assign(record.value.config, params.config)
+    }
 
-  await serverdb.services.put(id, record.value)
-  const inst = get(id)
-  if (inst) {
-    inst.settings = record.value
-    if (record.value.config) inst.setConfig(record.value.config)
+    await serverdb.services.put(record.key, record.value)
+
+    const inst = get(id)
+    if (inst && isIdChanged && params.id) {
+      services.delete(id)
+      services.set(params.id, inst)
+    }
+
+    if (inst) {
+      inst.settings = record.value
+      if (record.value.config) inst.setConfig(record.value.config)
+    }
+  } finally {
+    release()
   }
 }
 
 export async function uninstall (id: string): Promise<void> {
   const release = await lock(`services:${id}:ctrl`)
   try {
-    const record = await serverdb.services.get(id)
-    if (!record) {
-      throw new Error(`App ${id} not found`)
-    }
+    const record = await getServiceRecordById(id)
 
     get(id)?.stop()
     if (record.value?.package.sourceType === 'git') {
       await fsp.rm(Config.getActiveConfig().packageInstallPath(id), {recursive: true})
     }
-    await serverdb.services.delete(id)
+    await serverdb.services.delete(record.key)
     services.delete(id)
   } finally {
     release
@@ -245,10 +265,7 @@ export function stopAll (): void {
 }
 
 export async function checkForPackageUpdates (id: string): Promise<{hasUpdate: boolean, installedVersion: string, latestVersion: string}> {
-  const record = await serverdb.services.get(id)
-  if (!record?.value) {
-    throw new Error(`App ${id} not found`)
-  }
+  const record = await getServiceRecordById(id)
   await git.fetch(id)
   const latestVersion = await git.getLatestVersion(id, record.value.desiredVersion || 'latest')
   return {
@@ -259,10 +276,7 @@ export async function checkForPackageUpdates (id: string): Promise<{hasUpdate: b
 }
 
 export async function updatePackage (id: string): Promise<{installedVersion: string, oldVersion: string}> {
-  const record = await serverdb.services.get(id)
-  if (!record?.value) {
-    throw new Error(`App ${id} not found`)
-  }
+  const record = await getServiceRecordById(id)
 
   await git.fetch(id)
   const latestVersion = await git.getLatestVersion(id, record.value.desiredVersion || 'latest')
@@ -279,7 +293,7 @@ export async function updatePackage (id: string): Promise<{installedVersion: str
   const oldVersion = record.value.package.installedVersion || ''
   record.value.manifest = manifest
   record.value.package.installedVersion = latestVersion
-  await serverdb.services.put(id, record.value)
+  await serverdb.services.put(record.key, record.value)
 
   const inst = get(id)
   if (inst) inst.settings = record.value

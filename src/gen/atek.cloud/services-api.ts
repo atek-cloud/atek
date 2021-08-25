@@ -76,11 +76,13 @@ export enum StatusEnum {
 
 export interface InstallOpts {
   sourceUrl: string;
+  id?: string;
   desiredVersion?: string;
   port?: number;
 }
 
 export interface ConfigureOpts {
+  id?: string;
   sourceUrl?: string;
   desiredVersion?: string;
   port?: number;

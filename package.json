@@ -36,7 +36,7 @@
     "typescript": "^4.3.5"
   },
   "dependencies": {
-    "@atek-cloud/api-broker": "^0.0.2",
+    "@atek-cloud/api-broker": "^0.0.3",
     "@hyperspace/rpc": "^1.15.1",
     "@hyperswarm/dht": "^4.0.1",
     "@types/ws": "^7.4.7",

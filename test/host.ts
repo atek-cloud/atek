@@ -8,15 +8,7 @@ test.after(async () => {
 })
 
 test.serial('Correctly loads core services (hyper, adb) and creates server db', async t => {
-  const cfg = new atek.test.Config({
-    coreServices: [
-      {
-        sourceUrl: 'https://github.com/atek-cloud/hyper-daemon',
-        config: {SIMULATE_HYPERSPACE: '1'}
-      },
-      {sourceUrl: 'https://github.com/atek-cloud/adb'}
-    ]
-  })
+  const cfg = new atek.test.Config()
   inst = await atek.test.startAtek(cfg)
 
   activeCfg = await inst.api('atek.cloud/inspect-api')('getConfig')
