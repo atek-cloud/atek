@@ -7,17 +7,8 @@ export const DEFAULT_HOST_PORT = 3000
 let _activeConfig: Config | undefined = undefined
 
 const DEFAULT_CORE_SERVICES: InstallParams[] = [
-  {
-    sourceUrl: 'https://github.com/atek-cloud/hyper-daemon',
-    config: {
-      SIMULATE_HYPERSPACE: '0',
-      HYPERSPACE_HOST: undefined,
-      HYPERSPACE_STORAGE: undefined
-    }
-  },
-  {
-    sourceUrl: 'https://github.com/atek-cloud/adb'
-  }
+  {sourceUrl: 'https://github.com/atek-cloud/hyper-daemon'},
+  {sourceUrl: 'https://github.com/atek-cloud/adb'}
 ]
 
 export interface ConfigValues {

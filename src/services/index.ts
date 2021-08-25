@@ -9,7 +9,7 @@ import { Config } from '../config.js'
 import lock from '../lib/lock.js'
 import { sourceUrlToId, getAvailableId, getAvailablePort } from './util.js'
 import { createValidator } from '../schemas/util.js'
-import AtekService, { SourceTypeEnum, RuntimeEnum } from '../gen/atek.cloud/service.js'
+import AtekService, { SourceTypeEnum, RuntimeEnum, ServiceConfig } from '../gen/atek.cloud/service.js'
 import AdbCtrlApi from '../gen/atek.cloud/adb-ctrl-api.js'
 
 const manifestValidator = createValidator({
@@ -36,10 +36,6 @@ const manifestValidator = createValidator({
   }
 })
 
-export interface ServiceConfig {
-  [key: string]: string | undefined
-}
-
 export interface InstallParams {
   sourceUrl: string
   id?: string
@@ -52,6 +48,7 @@ export interface UpdateParams {
   sourceUrl?: string
   port?: number
   desiredVersion?: string
+  config?: ServiceConfig
 }
 
 export interface ServiceManifest {
@@ -132,6 +129,7 @@ export async function install (params: InstallParams, authedUsername: string): P
     system: {
       appPort: await getAvailablePort()
     },
+    config: params.config,
     installedBy: authedUsername
   }
   await serverdb.services.put(params.id, recordValue)
@@ -149,10 +147,17 @@ export async function updateConfig (id: string, params: UpdateParams): Promise<v
   if (typeof params.port === 'number') record.value.port = params.port
   if (typeof params.sourceUrl === 'string') record.value.sourceUrl = params.sourceUrl
   if (typeof params.desiredVersion === 'string') record.value.desiredVersion = params.desiredVersion
+  if (params.config) {
+    record.value.config = record.value.config ?? {}
+    Object.assign(record.value.config, params.config)
+  }
 
   await serverdb.services.put(id, record.value)
   const inst = get(id)
-  if (inst) inst.settings = record.value
+  if (inst) {
+    inst.settings = record.value
+    if (record.value.config) inst.setConfig(record.value.config)
+  }
 }
 
 export async function uninstall (id: string): Promise<void> {
@@ -179,7 +184,7 @@ export async function load (settings: AtekService, config: ServiceConfig = {}): 
   const release = await lock(`services:${id}:ctrl`)
   try {
     if (!services.has(id)) {
-      services.set(id, new ServiceInstance(settings, config))
+      services.set(id, new ServiceInstance(settings, Object.assign({}, settings.config, config)))
       await services.get(id)?.setup()
       await services.get(id)?.start()
     }
