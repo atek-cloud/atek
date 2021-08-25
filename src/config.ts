@@ -48,7 +48,6 @@ export class Config implements ConfigValues {
     this.values = <ConfigValues>{}
     this.error = undefined
     this.read()
-
     this.overrides = opts
   }
 

@@ -7,6 +7,7 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import * as repl from './repl/index.js'
 import { Config, ConfigValues } from './config.js'
+import { generateBearerToken } from './lib/crypto.js'
 import * as services from './services/index.js'
 import * as serverdb from './serverdb/index.js'
 import * as sessionMiddleware from './httpapi/session-middleware.js'
@@ -40,6 +41,10 @@ export * as test from './test.js'
 export async function start (opts: StartOpts) {
   const configDir = opts.configDir || path.join(os.homedir(), '.atek')
   const config = new Config(configDir, opts)
+  if (!config.systemAuthTokens?.length) {
+    console.log('writing system auth tokens')
+    config.update({systemAuthTokens: [generateBearerToken()]})
+  }
   Config.setActiveConfig(config)
   await fs.promises.mkdir(path.join(configDir, 'logs'), {recursive: true})
   await fs.promises.mkdir(path.join(configDir, 'packages'), {recursive: true})

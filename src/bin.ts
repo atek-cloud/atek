@@ -5,12 +5,14 @@ import * as server from './index.js'
 import * as path from 'path'
 import { fileURLToPath } from 'url'
 import * as fs from 'fs'
-import { DEFAULT_REPL_PORT } from './config.js'
+import * as os from 'os'
+import { Config, DEFAULT_REPL_PORT } from './config.js'
 import * as net from 'net'
+import { createApi } from './lib/rpc.js'
 
 const PACKAGE_JSON_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json')
 
-function startCommand (args: any): void {
+function runCommand (args: any): void {
   server.start({
     port: args.port,
     domain: args.domain,
@@ -18,11 +20,80 @@ function startCommand (args: any): void {
   })
 }
 
+async function apiCall (args: any, apiId: string, method: string, params: any[]): Promise<any> {
+  const config = new Config(args.configDir || path.join(os.homedir(), '.atek'), {})
+  const api = createApi(`http://localhost:${config.port}`, {api: apiId}, config.systemAuthTokens[0])
+  try {
+    return await api(method, params)
+  } catch (e) {
+    console.error(e)
+    process.exit(1)
+  }
+}
+
 const match = subcommand({
   commands: [
     {
+      name: 'run',
+      command: runCommand
+    },
+    {
+      name: 'install',
+      command: async (args: any) => {
+        if (args._[0]) args.sourceUrl = args._[0]
+        if (args.sourceUrl.startsWith('/')) {
+          args.sourceUrl = `file://${args.sourceUrl}`
+        }
+        console.log(await apiCall(args, 'atek.cloud/services-api', 'install', [args]))
+      }
+    },
+    {
+      name: 'uninstall',
+      command: async (args: any) => {
+        await apiCall(args, 'atek.cloud/services-api', 'uninstall', [args.id || args._[0]])
+      }
+    },
+    {
+      name: 'update',
+      command: async (args: any) => {
+        console.log(await apiCall(args, 'atek.cloud/services-api', 'updatePackage', [args.id || args._[0]]))
+      }
+    },
+    {
+      name: 'ls',
+      command: async (args: any) => {
+        console.log((await apiCall(args, 'atek.cloud/services-api', 'list', [])).services)
+      }
+    },
+    {
+      name: 'get',
+      command: async (args: any) => {
+        console.log(await apiCall(args, 'atek.cloud/services-api', 'get', [args.id || args._[0]]))
+      }
+    },
+    {
+      name: 'cfg',
+      command: async (args: any) => {
+        await apiCall(args, 'atek.cloud/services-api', 'configure', [args.id || args._[0], args])
+      }
+    },
+    {
       name: 'start',
-      command: startCommand
+      command: async (args: any) => {
+        await apiCall(args, 'atek.cloud/services-api', 'start', [args.id || args._[0]])
+      }
+    },
+    {
+      name: 'stop',
+      command: async (args: any) => {
+        await apiCall(args, 'atek.cloud/services-api', 'stop', [args.id || args._[0]])
+      }
+    },
+    {
+      name: 'restart',
+      command: async (args: any) => {
+        await apiCall(args, 'atek.cloud/services-api', 'restart', [args.id || args._[0]])
+      }
     },
     {
       name: 'repl',
@@ -47,7 +118,7 @@ const match = subcommand({
         const pkg = JSON.parse(packageJson)
         console.log(pkg.version)
       } else {
-        startCommand(args)
+        runCommand(args)
       }
     }
   }

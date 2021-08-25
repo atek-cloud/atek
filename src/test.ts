@@ -4,10 +4,9 @@ import { spawn, ChildProcess } from 'child_process'
 import tmp from 'tmp'
 import path from 'path'
 import fs from 'fs'
-import { fileURLToPath, URLSearchParams } from 'url'
-import fetch from 'node-fetch'
-import jsonrpc from 'jsonrpc-lite'
+import { fileURLToPath } from 'url'
 import { generateBearerToken } from './lib/crypto.js'
+import { createApi } from './lib/rpc.js'
 
 const INSPECTOR_ENABLED = false
 const PORT = 10000
@@ -50,7 +49,7 @@ export class TestInstance {
   }
 
   api (apiDesc: string|NodeJS.Dict<string>) {
-    return createApi(apiDesc, this.authToken)
+    return createApi(this.url, apiDesc, this.authToken)
   }
 
   async close () {
@@ -81,7 +80,7 @@ export async function startAtek (config: Config = new Config()) {
     }
   )
 
-  const inspect = createApi('atek.cloud/inspect-api', authToken)
+  const inspect = createApi(`http://localhost:${PORT}`, 'atek.cloud/inspect-api', authToken)
   let isReady = false
   for (let i = 0; i < 100; i++) {
     isReady = await inspect('isReady').then((v) => v, (err) => false)
@@ -90,25 +89,5 @@ export async function startAtek (config: Config = new Config()) {
   }
   if (!isReady) throw new Error('Server failed to start')
 
-  return new TestInstance(`http://localhost:${PORT}/`, serverProcess, cfgDir, authToken)
-}
-
-let _id = 1
-function createApi (apiDesc: string|NodeJS.Dict<string>, authToken: string) {
-  const qp = new URLSearchParams(typeof apiDesc === 'string' ? {api: apiDesc} : apiDesc)
-  const url = `http://localhost:${PORT}/_api/gateway?${qp.toString()}`
-
-  return async (methodName: string, params: any[] = []): Promise<any> => {
-    const responseBody = await (await fetch(url, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'Authentication': `Bearer ${authToken}`},
-      body: JSON.stringify(jsonrpc.request(_id++, methodName, params))
-    })).json()
-    const parsed = jsonrpc.parseObject(responseBody)
-    if (parsed.type === 'error') {
-      throw parsed.payload.error
-    } else if (parsed.type === 'success') {
-      return parsed.payload.result
-    }
-  }
+  return new TestInstance(`http://localhost:${PORT}`, serverProcess, cfgDir, authToken)
 }
