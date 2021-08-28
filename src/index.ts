@@ -42,7 +42,6 @@ export async function start (opts: StartOpts) {
   const configDir = opts.configDir || path.join(os.homedir(), '.atek')
   const config = new Config(configDir, opts)
   if (!config.systemAuthTokens?.length) {
-    console.log('writing system auth tokens')
     config.update({systemAuthTokens: [generateBearerToken()]})
   }
   Config.setActiveConfig(config)
