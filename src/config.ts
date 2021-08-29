@@ -55,7 +55,7 @@ export class Config implements ConfigValues {
   }
 
   get domain () {
-    return this.overrides.domain || this.values.domain || undefined
+    return this.overrides.domain || this.values.domain || 'localhost'
   }
 
   get port () {
