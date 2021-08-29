@@ -41,11 +41,12 @@ export async function getAvailableId (sourceUrl: string): Promise<string> {
 
 export async function getAvailablePort (isCore = false): Promise<number> {
   const cfg = Config.getActiveConfig()
+  const basePort = Math.max(cfg.port, 1024)
   const release = await lock('service:get-available-port')
   try {
     const srvRecords = !isCore ? await serverdb.services.list() : {records: []}
     for (let i = 1; i < 1e9; i++) {
-      const port = await getPort({port: isCore ? getPort.makeRange(cfg.port, cfg.port + 4999) : getPort.makeRange(cfg.port + 5000, 65535)})
+      const port = await getPort({port: isCore ? getPort.makeRange(basePort, basePort + 4999) : getPort.makeRange(basePort + 5000, 65535)})
       if (!srvRecords.records.find(r => r.value?.port == port)) {
         return port
       }

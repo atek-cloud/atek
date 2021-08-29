@@ -3,7 +3,7 @@ import * as fs from 'fs'
 import { InstallParams } from './services/index.js'
 
 export const DEFAULT_REPL_PORT = 2999
-export const DEFAULT_HOST_PORT = 3000
+export const DEFAULT_HOST_PORT = 80
 let _activeConfig: Config | undefined = undefined
 
 const DEFAULT_CORE_SERVICES: InstallParams[] = [
