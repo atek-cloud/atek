@@ -19,6 +19,9 @@
       "--loader=ts-node/esm"
     ]
   },
+  "repository": "github:atek-cloud/atek",
+  "bugs": {"url": "https://github.com/atek-cloud/atek/issues"},
+  "homepage": "https://github.com/atek-cloud/atek#readme",
   "author": "Paul Frazee <pfrazee@gmail.com>",
   "license": "MIT",
   "devDependencies": {
