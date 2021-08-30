@@ -3,6 +3,7 @@
   "version": "0.0.7",
   "description": "",
   "main": "dist/index.js",
+  "bin": "dist/index.js",
   "type": "module",
   "scripts": {
     "build": "tsc --project tsconfig.json",
