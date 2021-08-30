@@ -1,9 +1,8 @@
-import { serve } from "https://deno.land/std@0.101.0/http/server.ts"
+import http from 'http'
 
-const PORT = Number(Deno.env.get('ATEK_ASSIGNED_PORT'))
-const server = serve({ port: PORT });
-console.log(`simple-app HTTP webserver running at: http://localhost:${PORT}/`);
-
-for await (const request of server) {
-  request.respond({ status: 200, body: `Hello, world!` });
-}
+const PORT = Number(process.env.ATEK_ASSIGNED_PORT)
+http.createServer((req, res) => {
+  res.writeHead(200).end('Hello, world!')
+}).listen(PORT, e => {
+  console.log(`simple-app HTTP webserver running at: http://localhost:${PORT}/`);
+})

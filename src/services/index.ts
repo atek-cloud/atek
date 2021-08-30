@@ -19,7 +19,6 @@ const manifestValidator = createValidator({
     description: {type: 'string'},
     author: {type: 'string'},
     license: {type: 'string'},
-    runtime: {type: 'string', enum: ['node', 'deno']},
     protocols: {
       type: 'object',
       properties: {

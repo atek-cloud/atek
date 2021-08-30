@@ -16,7 +16,6 @@ import { ServiceInfo, StatusEnum } from '../gen/atek.cloud/services-api.js'
 import * as apiBroker from '@atek-cloud/api-broker'
 
 const INSTALL_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
-const DENO_PATH = path.join(INSTALL_PATH, 'bin', 'deno')
 const NODE_PATH = process.execPath
 
 let _id = 1 // json-rpc ID incrementer
@@ -118,12 +117,7 @@ export class ServiceInstance extends EventEmitter {
     try {
       if (this.process) return
 
-      let thisProcess: childProcess.ChildProcess | undefined
-      if (this.manifest.runtime === RuntimeEnum.node) {
-        thisProcess = this.process = await this.startNodeProcess()
-      } else {
-        thisProcess = this.process = await this.startDenoProcess()
-      }
+      let thisProcess = this.process = await this.startNodeProcess()
       if (!this.process) throw new Error('Failed to start process')
       process.on('exit', () => thisProcess?.kill()) // make SURE this happens
 
@@ -219,42 +213,6 @@ export class ServiceInstance extends EventEmitter {
     } else {
       throw new apiBroker.ServiceNotFound('API not found')
     }
-  }
-
-  async startDenoProcess (): Promise<childProcess.ChildProcess> {
-    const hostcfg = Config.getActiveConfig()
-
-    let scriptPath = ''
-    if (await fsp.stat(this.getPackagePath('index.ts')).catch(e => undefined)) {
-      scriptPath = this.getPackagePath('index.ts')
-    } else if (await fsp.stat(this.getPackagePath('index.js')).catch(e => undefined)) {
-      scriptPath = this.getPackagePath('index.js')
-    } else {
-      throw new Error('Package issue: index.js and index.ts not found.')
-    }
-    const args = [
-      'run',
-      `--location=http://${this.id}.localhost:${this.settings.port}`,
-      `--allow-net=0.0.0.0:${this.settings.port},localhost:${hostcfg.port}`,
-      `--allow-env=ATEK_ASSIGNED_PORT,ATEK_HOST_PORT,ATEK_HOST_BEARER_TOKEN`,
-      '--reload', // TODO: more intelligent cache invalidation behavior (this is really only needed when remote imports are expected to change, ie when developing the host env api)
-      scriptPath
-    ]
-    const opts = {
-      env: Object.assign({}, this.config, {
-        ATEK_ASSIGNED_PORT: String(this.settings.port),
-        ATEK_HOST_PORT: String(hostcfg.port),
-        ATEK_HOST_BEARER_TOKEN: this.bearerToken
-      }) as NodeJS.ProcessEnv
-    }
-    this.log('----------------------')
-    this.log(`Starting service process ${this.id}`)
-    this.log(`  Path: ${scriptPath}`)
-    this.log(`  External port: ${this.port}`)
-    this.log(`  Call: ${DENO_PATH} ${args.join(' ')}`)
-    this.log(`  Env: ${JSON.stringify(opts.env)}`)
-    this.log('----------------------')
-    return childProcess.spawn(DENO_PATH, args, opts)
   }
 
   async startNodeProcess (): Promise<childProcess.ChildProcess> {

@@ -178,7 +178,7 @@ const cmdOpts = {
       options: [
         {name: 'in', help: 'The .d.ts input file path'},
         {name: 'out', help: 'The path of the folder receiving the output'},
-        {name: 'env', help: 'The target environment. Must be host, node-userland, or deno-userland'}
+        {name: 'env', help: 'The target environment. Must be node or host.'}
       ],
       usage,
       command: (args: any) => {
@@ -191,7 +191,7 @@ const cmdOpts = {
       options: [
         {name: 'in', help: 'The path of the folder containing the input d.ts files'},
         {name: 'out', help: 'The path of the folder receiving the output'},
-        {name: 'env', help: 'The target environment. Must be host, node-userland, or deno-userland'}
+        {name: 'env', help: 'The target environment. Must be node or host.'}
       ],
       usage,
       command: (args: any) => {
