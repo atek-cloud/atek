@@ -65,7 +65,6 @@ const cmdOpts = {
       console.log(help)
       console.log('')
       console.log(usage)
-      console.log('')
       console.log('Commands:')
       for (const cmd of cmdOpts.commands) {
         console.log('  ', cmd.help || `atek ${cmd.name}`)
