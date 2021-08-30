@@ -116,7 +116,13 @@ function createServer (config: Config) {
       const subdomain = host.slice(0, slice)
       const service = services.get(subdomain)
       if (service) {
-        getProxy(service).web(req, res)
+        try {
+          return getProxy(service).web(req, res, undefined, (e: Error) => {
+            if (e) proxyError(e, res, subdomain)
+          })
+        } catch (e) {
+          return proxyError(e, res, subdomain)
+        }
       } else {
         res.status(404).end(`Not found: no service is currently hosted at ${req.headers.host}`)
       }
@@ -131,7 +137,13 @@ function createServer (config: Config) {
     if (config.mainService) {
       const service = services.get(config.mainService)
       if (service) {
-        return getProxy(service).web(req, res)
+        try {
+          return getProxy(service).web(req, res, undefined, (e: Error) => {
+            if (e) proxyError(e, res, config.mainService)
+          })
+        } catch (e) {
+          return proxyError(e, res, config.mainService)
+        }
       }
     }
     res.set('Content-Type', 'text/html')
@@ -162,6 +174,12 @@ function createServer (config: Config) {
 
 function json404 (res: express.Response, e: Error | string) {
   res.status(404).json({error: true, message: e instanceof Error && e.message ? e.message : e.toString()})
+}
+
+function proxyError (e: Error, res: express.Response, id: string) {
+  console.error('Failed to proxy request to', id)
+  console.error(e)
+  return res.status(500).end('Internal server error')
 }
 
 const proxies = new Map<string, httpProxy>()
