@@ -19,13 +19,7 @@ import * as rpcapi from './rpcapi/index.js'
 // import * as metrics from './lib/metrics.js' TODO
 import fs from 'fs'
 import * as path from 'path'
-import { fileURLToPath } from 'url'
 import * as os from 'os'
-import { Liquid } from 'liquidjs'
-
-const INSTALL_PATH = path.dirname(fileURLToPath(import.meta.url))
-const INSTALL_UI_PATH = path.join(INSTALL_PATH, '..', 'frontend', 'ui')
-const INSTALL_JSON_FORMS_PATH = path.join(INSTALL_PATH, '..', 'frontend', 'json-forms')
 
 let app
 
@@ -90,9 +84,6 @@ export async function start (opts: StartOpts) {
 
 function createServer (config: Config) {
   app = createExpressApp()
-  app.engine('liquid', (new Liquid()).express())
-  app.set('views', path.join(INSTALL_UI_PATH, 'views'))
-  app.set('view engine', 'liquid')
   app.set('trust proxy', 'loopback')
   app.use(cors())
   app.use(express.json())
@@ -136,29 +127,15 @@ function createServer (config: Config) {
 
   apiGatewayHttpApi.setup(app)
   app.use('/_api', (req: express.Request, res: express.Response) => json404(res, 'Not found'))
-  app.get('/', (req: express.Request, res: express.Response) => res.render('index'))
-  app.get('/index', (req: express.Request, res: express.Response) => res.render('index'))
-  app.get('/index.html', (req: express.Request, res: express.Response) => res.render('index'))
-  app.get('/p/*', (req: express.Request, res: express.Response) => res.render('index'))
-  app.get('/p/*/*', (req: express.Request, res: express.Response) => res.render('index'))
-  app.use('/img', express.static(path.join(INSTALL_UI_PATH, 'static', 'img')))
-  app.use('/css', express.static(path.join(INSTALL_UI_PATH, 'static', 'css')))
-  app.get('/js/app.build.js', (req: express.Request, res: express.Response) => {
-    if(process.env.NODE_ENV === 'production') {
-      res.sendFile(path.join(INSTALL_UI_PATH, 'static', 'js', 'app.build.js'))
-    } else {
-      res.sendFile(path.join(INSTALL_UI_PATH, 'static', 'js', 'app.js'))
-    }
-  })
-  app.use('/js', express.static(path.join(INSTALL_UI_PATH, 'static', 'js')))
-  app.use('/vendor', express.static(path.join(INSTALL_UI_PATH, 'static', 'vendor')))
-  app.use('/webfonts', express.static(path.join(INSTALL_UI_PATH, 'static', 'webfonts')))
-  app.use('/ui/json-forms', express.static(INSTALL_JSON_FORMS_PATH))
-  app.use('/_schemas', express.static('schemas'))
-  app.get('/manifest.json', (req: express.Request, res: express.Response) => res.sendFile(path.join(INSTALL_UI_PATH, 'static', 'manifest.json')))
-  app.get(new RegExp('/([^/])'), (req: express.Request, res: express.Response) => res.render('index'))
   app.use((req: express.Request, res: express.Response) => {
-    res.status(404).send('404 Page not found')
+    if (config.mainService) {
+      const service = services.get(config.mainService)
+      if (service) {
+        return getProxy(service).web(req, res)
+      }
+    }
+    res.set('Content-Type', 'text/html')
+    res.status(200).send('<h1>Welcome to Atek</h1><p>Note: No main service is configured. Set "mainService" in your config to the ID of the service you want hosted at your main domain.</p>')
   })
 
   const wsServer = new ws.WebSocketServer({ noServer: true })

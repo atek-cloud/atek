@@ -16,6 +16,7 @@ export interface ConfigValues {
   port?: number
   serverDbId?: string
   coreServices?: InstallParams[]
+  mainService?: string
   systemAuthTokens?: string[]
 }
 
@@ -68,6 +69,10 @@ export class Config implements ConfigValues {
 
   get coreServices () {
     return this.overrides.coreServices || this.values.coreServices || DEFAULT_CORE_SERVICES
+  }
+
+  get mainService () {
+    return this.overrides.mainService || this.values.mainService || undefined
   }
 
   get systemAuthTokens () {
