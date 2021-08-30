@@ -72,7 +72,8 @@ const adbCtrlApi = new AdbCtrlApi()
 // exported api
 // =
 
-export async function setup (): Promise<void> {
+export function setup (): void {
+  process.on('exit', () => stopAll())
 }
 
 export async function loadCoreServices (): Promise<void> {

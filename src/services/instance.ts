@@ -118,12 +118,14 @@ export class ServiceInstance extends EventEmitter {
     try {
       if (this.process) return
 
+      let thisProcess: childProcess.ChildProcess | undefined
       if (this.manifest.runtime === RuntimeEnum.node) {
-        this.process = await this.startNodeProcess()
+        thisProcess = this.process = await this.startNodeProcess()
       } else {
-        this.process = await this.startDenoProcess()
+        thisProcess = this.process = await this.startDenoProcess()
       }
       if (!this.process) throw new Error('Failed to start process')
+      process.on('exit', () => thisProcess?.kill()) // make SURE this happens
 
       this.process
         .on('error', (...args) => this.emit('error', ...args))
