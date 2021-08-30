@@ -43,9 +43,15 @@ export async function listVersions (id: string): Promise<PackageVersion[]> {
 
 export async function getLatestVersion (id: string, spec: string): Promise<string> {
   let versions = await listVersions(id)
+  if (versions.length === 0) {
+    throw new Error(`No release (git tag) has been set for ${id}`)
+  }
   if (spec && spec !== 'latest') {
     versions = versions.filter(tag => semver.satisfies(tag.version, spec))
+    if (versions.length === 0) {
+      throw new Error(`No release (git tag) available for ${id} which matches the desired version of ${spec}`)
+    }
   }
   versions = versions.sort((a, b) => semver.rcompare(a.version, b.version))
-  return versions[0].tag
+  return versions[0]?.tag
 }
