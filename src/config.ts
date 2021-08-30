@@ -7,9 +7,11 @@ export const DEFAULT_HOST_PORT = 80
 let _activeConfig: Config | undefined = undefined
 
 const DEFAULT_CORE_SERVICES: InstallParams[] = [
-  {sourceUrl: 'https://github.com/atek-cloud/hyper-daemon'},
-  {sourceUrl: 'https://github.com/atek-cloud/adb'}
+  {id: 'core.hyper-daemon', sourceUrl: 'https://github.com/atek-cloud/hyper-daemon'},
+  {id: 'core.adb', sourceUrl: 'https://github.com/atek-cloud/adb'},
+  {id: 'core.lonestar', sourceUrl: 'https://github.com/atek-cloud/lonestar'},
 ]
+const DEFAULT_MAIN_SERVICE = 'core.lonestar'
 
 export interface ConfigValues {
   domain?: string
@@ -72,7 +74,7 @@ export class Config implements ConfigValues {
   }
 
   get mainService () {
-    return this.overrides.mainService || this.values.mainService || undefined
+    return this.overrides.mainService || this.values.mainService || DEFAULT_MAIN_SERVICE
   }
 
   get systemAuthTokens () {
