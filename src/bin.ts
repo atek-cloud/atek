@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import subcommand from 'subcommand'
+import * as tsgen from '@atek-cloud/tsgen/dist/bin.js'
 import * as server from './index.js'
 import * as path from 'path'
 import { fileURLToPath } from 'url'
@@ -105,6 +106,18 @@ const match = subcommand({
       name: 'restart',
       command: async (args: any) => {
         await apiCall(args, 'atek.cloud/services-api', 'restart', [args.id || args._[0]])
+      }
+    },
+    {
+      name: 'tsgen gen-file',
+      command: (args: any) => {
+        tsgen.doGenerateFile(args)
+      }
+    },
+    {
+      name: 'tsgen gen-folder',
+      command: (args: any) => {
+        tsgen.doGenerateFolder(args)
       }
     },
     {
