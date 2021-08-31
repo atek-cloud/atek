@@ -11,11 +11,10 @@ import lock from '../lib/lock.js'
 import fetch from 'node-fetch'
 import WebSocket, { createWebSocketStream } from 'ws'
 import jsonrpc from 'jsonrpc-lite'
-import AtekService, { ServiceManifest, ApiExportDesc, RuntimeEnum, ServiceConfig } from '../gen/atek.cloud/service.js'
+import AtekService, { ServiceManifest, ApiExportDesc, ServiceConfig } from '../gen/atek.cloud/service.js'
 import { ServiceInfo, StatusEnum } from '../gen/atek.cloud/services-api.js'
 import * as apiBroker from '@atek-cloud/api-broker'
 
-const INSTALL_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const NODE_PATH = process.execPath
 
 let _id = 1 // json-rpc ID incrementer

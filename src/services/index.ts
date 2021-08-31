@@ -9,7 +9,7 @@ import { Config } from '../config.js'
 import lock from '../lib/lock.js'
 import { sourceUrlToId, getAvailableId, getAvailablePort, getServiceRecordById } from './util.js'
 import { createValidator } from '../schemas/util.js'
-import AtekService, { SourceTypeEnum, RuntimeEnum, ServiceConfig } from '../gen/atek.cloud/service.js'
+import AtekService, { SourceTypeEnum, ServiceConfig } from '../gen/atek.cloud/service.js'
 import AdbCtrlApi from '../gen/atek.cloud/adb-ctrl-api.js'
 
 const manifestValidator = createValidator({
@@ -56,7 +56,6 @@ export interface ServiceManifest {
   description?: string
   author?: string
   license?: string
-  runtime?: RuntimeEnum
   protocols?: {
     tables?: string[]
   }
@@ -117,7 +116,7 @@ export async function install (params: InstallParams, authedUsername: string): P
 
     const {sourceType, installedVersion} = await fetchPackage(params)
     const manifest = await readManifestFile(params.id, params.sourceUrl)
-    if (manifest?.runtime === 'node' && sourceType !== 'file') {
+    if (sourceType !== 'file') {
       await npm.setupPackage(params.id, getInstallPath(params.id, params.sourceUrl))
     }
 
@@ -225,7 +224,7 @@ export async function loadCoreService (params: InstallParams): Promise<ServiceIn
 
   const {sourceType, installedVersion} = await fetchPackage(params)
   const manifest = await readManifestFile(params.id, params.sourceUrl)
-  if (manifest?.runtime === 'node' && sourceType !== 'file') {
+  if (sourceType !== 'file') {
     await npm.setupPackage(params.id, getInstallPath(params.id, params.sourceUrl))
   }
 
@@ -286,7 +285,7 @@ export async function updatePackage (id: string): Promise<{installedVersion: str
   await git.checkout(id, latestVersion)
 
   const manifest = await readManifestFile(id, record.value.sourceUrl)
-  if (manifest?.runtime === 'node' && record.value.package.sourceType !== SourceTypeEnum.file) {
+  if (record.value.package.sourceType !== SourceTypeEnum.file) {
     await npm.setupPackage(id, getInstallPath(id, record.value.sourceUrl))
   }
 
