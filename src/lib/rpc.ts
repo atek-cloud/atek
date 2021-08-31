@@ -6,7 +6,7 @@ import { removeUndefinedsAtEndOfArray } from './functions.js'
 let _id = 1
 export function createApi (origin: string, apiDesc: string|NodeJS.Dict<string>, authToken: string) {
   const qp = new URLSearchParams(typeof apiDesc === 'string' ? {api: apiDesc} : apiDesc)
-  const url = `${origin}/_api/gateway?${qp.toString()}`
+  const url = `${origin}/_atek/gateway?${qp.toString()}`
 
   return async (methodName: string, params: any[] = []): Promise<any> => {
     const responseBody = await (await fetch(url, {

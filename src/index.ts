@@ -132,7 +132,7 @@ function createServer (config: Config) {
   })
 
   apiGatewayHttpApi.setup(app)
-  app.use('/_api', (req: express.Request, res: express.Response) => json404(res, 'Not found'))
+  app.use('/_atek', (req: express.Request, res: express.Response) => json404(res, 'Not found'))
   app.use((req: express.Request, res: express.Response) => {
     if (config.mainService) {
       const service = services.get(config.mainService)
@@ -152,7 +152,7 @@ function createServer (config: Config) {
 
   const wsServer = new ws.WebSocketServer({ noServer: true })
   wsServer.on('connection', (socket: WebSocket, req: http.IncomingMessage) => {
-    if (/\/_api\/gateway(\?|\/$|$)/.test(req.url || '/')) {
+    if (/\/_atek\/gateway(\?|\/$|$)/.test(req.url || '/')) {
       apiGatewayHttpApi.handleWebSocket(socket, req)
     } else {
       socket.close()

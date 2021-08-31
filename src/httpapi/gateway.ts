@@ -8,9 +8,9 @@ import WebSocket from 'ws'
 import { URL } from 'url'
 
 export function setup (app: express.Application) {
-  console.log('Enabling /_api/gateway endpoints')
+  console.log('Enabling /_atek/gateway endpoints')
 
-  app.use('/_api/gateway', (req: RequestWithSession, res: express.Response, next: express.NextFunction) => {
+  app.use('/_atek/gateway', (req: RequestWithSession, res: express.Response, next: express.NextFunction) => {
     // if (!req.session?.isAppAuthed()) { // TODO
     //   res.status(401).json({error: true, message: 'Not authorized'})
     //   return
@@ -18,7 +18,7 @@ export function setup (app: express.Application) {
     next()
   })
 
-  app.post('/_api/gateway', async (req: RequestWithSession, res: express.Response) => {
+  app.post('/_atek/gateway', async (req: RequestWithSession, res: express.Response) => {
     const callDesc = {
       transport: apiBroker.TransportEnum.RPC,
       api: queryParamToString(req.query.api)
