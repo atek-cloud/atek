@@ -86,7 +86,6 @@ function createServer (config: Config) {
   app = createExpressApp()
   app.set('trust proxy', 'loopback')
   app.use(cors())
-  app.use(express.json())
   app.use(cookieParser())
   app.use(sessionMiddleware.setup())
 
@@ -131,6 +130,7 @@ function createServer (config: Config) {
     }
   })
 
+  app.use('/_atek', express.json())
   apiGatewayHttpApi.setup(app)
   app.use('/_atek', (req: express.Request, res: express.Response) => json404(res, 'Not found'))
   app.use((req: express.Request, res: express.Response) => {
