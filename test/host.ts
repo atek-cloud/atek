@@ -24,7 +24,7 @@ test.serial('Correctly loads core services (hyper, adb) and creates server db', 
 })
 
 test.serial('Routes calls to the server db', async t => {
-  const desc = await inst.api('atek.cloud/adb-api')('describe', [activeCfg.serverDbId])
+  const desc = await inst.api('atek.cloud/adb-api')('dbDescribe', [activeCfg.serverDbId])
   t.truthy(desc, 'Returns a description object')
   t.is(desc.dbId, activeCfg.serverDbId, 'Gave the correct database\'s description')
   t.truthy(desc.tables.find((table: any) => table.tableId === 'atek.cloud/database'), 'Registered atek.cloud/database')

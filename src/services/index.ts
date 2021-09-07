@@ -1,4 +1,6 @@
 import { ServiceInstance } from './instance.js'
+import adb from '@atek-cloud/adb-api'
+import { services, Service, SourceTypeEnum, ServiceConfig } from '@atek-cloud/adb-tables'
 import * as serverdb from '../serverdb/index.js'
 import * as git from '../lib/git.js'
 import * as npm from '../lib/npm.js'
@@ -9,8 +11,6 @@ import { Config } from '../config.js'
 import lock from '../lib/lock.js'
 import { sourceUrlToId, getAvailableId, getAvailablePort, getServiceRecordById } from './util.js'
 import { createValidator } from '../schemas/util.js'
-import AtekService, { SourceTypeEnum, ServiceConfig } from '../gen/atek.cloud/service.js'
-import AdbCtrlApi from '../gen/atek.cloud/adb-ctrl-api.js'
 
 const manifestValidator = createValidator({
   type: 'object',
@@ -64,8 +64,7 @@ export interface ServiceManifest {
 // globals
 // =
 
-const services = new Map<string, ServiceInstance>()
-const adbCtrlApi = new AdbCtrlApi()
+const activeServices = new Map<string, ServiceInstance>()
 
 // exported api
 // =
@@ -80,8 +79,8 @@ export async function loadCoreServices (): Promise<void> {
     await loadCoreService(serviceParams)
   }
 
-  await adbCtrlApi.init({serverDbId: cfg.serverDbId || ''})
-  const {serverDbId} = await adbCtrlApi.getConfig()
+  await adb.api.init({serverDbId: cfg.serverDbId || ''})
+  const {serverDbId} = await adb.api.getConfig()
   if (!cfg.isOverridden('serverDbId') && cfg.serverDbId !== serverDbId) {
     console.log('HOST: Created new server database, id:', serverDbId)
     cfg.update({serverDbId})
@@ -89,7 +88,7 @@ export async function loadCoreServices (): Promise<void> {
 }
 
 export async function loadUserServices (): Promise<void> {
-  const srvRecords = (await serverdb.services.list()).records
+  const srvRecords = (await services(serverdb.get()).list()).records
   for (const srvRecord of srvRecords) {
     if (srvRecord.value) await load(srvRecord.value)
   }
@@ -133,7 +132,7 @@ export async function install (params: InstallParams, authedUsername: string): P
       config: params.config,
       installedBy: authedUsername
     }
-    await serverdb.services.create(recordValue)
+    await services(serverdb.get()).create(recordValue)
   } finally {
     release()
   }
@@ -162,12 +161,12 @@ export async function updateConfig (id: string, params: UpdateParams): Promise<v
       Object.assign(record.value.config, params.config)
     }
 
-    await serverdb.services.put(record.key, record.value)
+    await services(serverdb.get()).put(record.key, record.value)
 
     const inst = get(id)
     if (inst && isIdChanged && params.id) {
-      services.delete(id)
-      services.set(params.id, inst)
+      activeServices.delete(id)
+      activeServices.set(params.id, inst)
     }
 
     if (inst) {
@@ -188,23 +187,23 @@ export async function uninstall (id: string): Promise<void> {
     if (record.value?.package.sourceType === 'git') {
       await fsp.rm(Config.getActiveConfig().packageInstallPath(id), {recursive: true})
     }
-    await serverdb.services.delete(record.key)
-    services.delete(id)
+    await services(serverdb.get()).delete(record.key)
+    activeServices.delete(id)
   } finally {
     release
   }
 }
 
-export async function load (settings: AtekService, config: ServiceConfig = {}): Promise<ServiceInstance| undefined> {
+export async function load (settings: Service, config: ServiceConfig = {}): Promise<ServiceInstance| undefined> {
   const id = settings.id
   const release = await lock(`services:${id}:ctrl`)
   try {
-    if (!services.has(id)) {
-      services.set(id, new ServiceInstance(settings, Object.assign({}, settings.config, config)))
-      await services.get(id)?.setup()
-      await services.get(id)?.start()
+    if (!activeServices.has(id)) {
+      activeServices.set(id, new ServiceInstance(settings, Object.assign({}, settings.config, config)))
+      await activeServices.get(id)?.setup()
+      await activeServices.get(id)?.start()
     }
-    return services.get(id)
+    return activeServices.get(id)
   } finally {
     release()
   }
@@ -246,11 +245,11 @@ export async function loadCoreService (params: InstallParams): Promise<ServiceIn
 }
 
 export function get (id: string): ServiceInstance | undefined {
-  return services.get(id)
+  return activeServices.get(id)
 }
 
 export function list (): ServiceInstance[] {
-  return Array.from(services.values())
+  return Array.from(activeServices.values())
 }
 
 export function getByBearerToken (bearerToken: string): ServiceInstance | undefined {
@@ -292,7 +291,7 @@ export async function updatePackage (id: string): Promise<{installedVersion: str
   const oldVersion = record.value.package.installedVersion || ''
   record.value.manifest = manifest
   record.value.package.installedVersion = latestVersion
-  await serverdb.services.put(record.key, record.value)
+  await services(serverdb.get()).put(record.key, record.value)
 
   const inst = get(id)
   if (inst) inst.settings = record.value
@@ -319,7 +318,7 @@ async function fetchPackage (params: InstallParams) {
   if (params?.sourceUrl && !params.sourceUrl.startsWith('file://')) {
     try {
       await git.clone(params.id, params.sourceUrl)
-    } catch (e) {
+    } catch (e: any) {
       throw new Error(`Failed to install app. Is it a Git repo? ${e.toString()}`)
     }
     sourceType = 'git'

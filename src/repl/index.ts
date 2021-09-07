@@ -7,7 +7,7 @@ import { DEFAULT_REPL_PORT } from '../config.js'
 import * as services from '../services/index.js'
 import { ServiceInstance } from '../services/instance.js'
 import * as serverdb from '../serverdb/index.js'
-import * as apiBroker from '@atek-cloud/api-broker'
+import * as apiBroker from '../broker/index.js'
 
 export function setup () {
   const server = net.createServer(handleConn)
@@ -28,7 +28,7 @@ function handleConn (socket: net.Socket) {
 
   // CONTEXT
   repl.context.services = services
-  repl.context.serverdb = serverdb
+  repl.context.serverdb = serverdb.get()
   repl.context.broker = apiBroker
 
   // COMMANDS

@@ -1,9 +1,9 @@
-import ServicesApiServer from '../gen/atek.cloud/services-api.server.js'
-import { ServiceInfo, InstallOpts, ConfigureOpts } from '../gen/atek.cloud/services-api.js'
+import { AtekRpcServer } from '@atek-cloud/node-rpc'
+import { createServer, ServiceInfo, InstallOpts, ConfigureOpts } from '@atek-cloud/services-api'
 import * as services from '../services/index.js'
 
-export function setup () {
-  return new ServicesApiServer({
+export function setup (): AtekRpcServer  {
+  return createServer({
     list (): Promise<{services: ServiceInfo[]}> {
       return Promise.resolve({services: services.list().map(s => s.toJSON())})
     },

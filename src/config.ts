@@ -89,7 +89,7 @@ export class Config implements ConfigValues {
     this.error = undefined
     try {
       this.values = JSON.parse(fs.readFileSync(this.filePath, 'utf8'))
-    } catch (e) {
+    } catch (e: any) {
       this.error = e
     }
   }

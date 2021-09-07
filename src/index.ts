@@ -6,12 +6,13 @@ import WebSocket, * as ws from 'ws'
 import httpProxy from 'http-proxy'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
+import adb from '@atek-cloud/adb-api'
 import * as repl from './repl/index.js'
 import { Config, ConfigValues } from './config.js'
 import { generateBearerToken } from './lib/crypto.js'
 import * as services from './services/index.js'
 import { ServiceInstance } from './services/instance.js'
-import * as serverdb from './serverdb/index.js'
+import { setup as setupServerDb } from './serverdb/index.js'
 import * as sessionMiddleware from './httpapi/session-middleware.js'
 import * as apiGatewayHttpApi from './httpapi/gateway.js'
 import * as rpcapi from './rpcapi/index.js'
@@ -48,13 +49,16 @@ export async function start (opts: StartOpts) {
   // }
   // metrics.setup({configDir: opts.configDir}) TODO
 
+  // configure any rpc apis atek is using
+  adb.api.$setEndpoint({port: config.port})
+
   repl.setup()
   const server = createServer(config)
 
   // initiate the services layer
   await services.setup()
   await services.loadCoreServices()
-  await serverdb.setup()
+  await setupServerDb()
   /* dont await */services.loadUserServices().catch(err => {
     console.log('Error while loading user services:')
     console.log(err)
@@ -119,7 +123,7 @@ function createServer (config: Config) {
           return getProxy(service).web(req, res, undefined, (e: Error) => {
             if (e) proxyError(e, res, subdomain)
           })
-        } catch (e) {
+        } catch (e: any) {
           return proxyError(e, res, subdomain)
         }
       } else {
@@ -141,7 +145,7 @@ function createServer (config: Config) {
           return getProxy(service).web(req, res, undefined, (e: Error) => {
             if (e) proxyError(e, res, config.mainService)
           })
-        } catch (e) {
+        } catch (e: any) {
           return proxyError(e, res, config.mainService)
         }
       }

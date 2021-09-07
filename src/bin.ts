@@ -32,7 +32,7 @@ async function apiCall (args: any, apiId: string, method: string, params: any[])
   const api = createApi(`http://localhost:${config.port}`, {api: apiId}, config.systemAuthTokens[0])
   try {
     return await api(method, params)
-  } catch (e) {
+  } catch (e: any) {
     if (e.code === 'ECONNREFUSED') {
       console.error('Failed to connect to Atek.')
       console.error('Make sure Atek is running before calling this command:')

@@ -14,7 +14,7 @@ export async function clone (id: string, url: string): Promise<string> {
   await fs.promises.mkdir(dir, {recursive: true})
   try {
     await git.clone({fs, http, dir, url})
-  } catch (e) {
+  } catch (e: any) {
     if (!url.endsWith('.git') && e.toString().includes('404')) {
       return clone(id, url + '.git')
     }

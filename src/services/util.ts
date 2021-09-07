@@ -4,8 +4,8 @@ import { URL } from 'url'
 import * as serverdb from '../serverdb/index.js'
 import lock from '../lib/lock.js'
 import { Config } from '../config.js'
-import { Record } from '@atek-cloud/api-broker/dist/adb-client.js'
-import Service from '../gen/atek.cloud/service.js'
+import { Record } from '@atek-cloud/adb-api'
+import { services, Service } from '@atek-cloud/adb-tables'
 
 export function sourceUrlToId (sourceUrl: string) {
   const urlp = new URL(sourceUrl)
@@ -15,8 +15,8 @@ export function sourceUrlToId (sourceUrl: string) {
 
 export async function getServiceRecordById (id: string): Promise<Record<Service>> {
   // TODO this should be a value that's automatically indexed by adb -prf
-  const srvRecords = (await serverdb.services.list()).records
-  const srvRecord = srvRecords.find(r => r.value.id === id)
+  const srvRecords = (await services(serverdb.get()).list()).records
+  const srvRecord = srvRecords.find((r: Record<Service>) => r.value.id === id)
   if (!srvRecord) throw new Error(`Service not found with id=${id}`)
   return srvRecord
 }
@@ -24,11 +24,11 @@ export async function getServiceRecordById (id: string): Promise<Record<Service>
 export async function getAvailableId (sourceUrl: string): Promise<string> {
   const release = await lock('service:get-available-id')
   try {
-    const srvRecords = await serverdb.services.list()
+    const srvRecords = await services(serverdb.get()).list()
     const basename = sourceUrlToId(sourceUrl)
     for (let i = 1; i < 1e9; i++) {
       const id = ((i === 1) ? basename : `${basename}-${i}`)
-      if (!srvRecords.records.find(r => r.key == id)) {
+      if (!srvRecords.records.find((r: Record<Service>) => r.key == id)) {
         return id
       }
     }
@@ -44,10 +44,10 @@ export async function getAvailablePort (isCore = false): Promise<number> {
   const basePort = Math.max(cfg.port, 1024)
   const release = await lock('service:get-available-port')
   try {
-    const srvRecords = !isCore ? await serverdb.services.list() : {records: []}
+    const srvRecords = !isCore ? await services(serverdb.get()).list() : {records: []}
     for (let i = 1; i < 1e9; i++) {
       const port = await getPort({port: isCore ? getPort.makeRange(basePort, basePort + 4999) : getPort.makeRange(basePort + 5000, 65535)})
-      if (!srvRecords.records.find(r => r.value?.port == port)) {
+      if (!srvRecords.records.find((r: Record<Service>) => r.value?.port == port)) {
         return port
       }
     }

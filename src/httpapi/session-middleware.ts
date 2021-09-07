@@ -2,6 +2,7 @@ import * as express from 'express'
 import { v4 as uuidv4 } from 'uuid'
 import { Config } from '../config.js'
 import * as serverdb from '../serverdb/index.js'
+import { accountSessions } from '@atek-cloud/adb-tables'
 import * as services from '../services/index.js'
 
 interface SessionAuth {
@@ -43,7 +44,7 @@ class Session {
       accountId,
       createdAt: (new Date()).toISOString()
     }
-    await serverdb.accountSessions.put(sess.sessionId, sess)
+    await accountSessions(serverdb.get()).put(sess.sessionId, sess)
     this.auth = {
       sessionId: sess.sessionId,
       accountId
@@ -57,7 +58,7 @@ class Session {
 
   async destroy (): Promise<void> {
     if (this.req.cookies.session) {
-      await serverdb.accountSessions.delete(this.req.cookies.session)
+      await accountSessions(serverdb.get()).delete(this.req.cookies.session)
       this.res.clearCookie('session')
       this.auth = undefined
     }
@@ -68,7 +69,7 @@ export function setup () {
   return async (req: RequestWithSession, res: express.Response, next: express.NextFunction) => {
     let auth = undefined
     if (req.cookies.session) {
-      const sessionRecord = await serverdb.accountSessions.get(req.cookies.session).catch(e => undefined)
+      const sessionRecord = await accountSessions(serverdb.get()).get(req.cookies.session).catch((e: any) => undefined)
       if (sessionRecord?.value) {
         auth = {
           sessionId: sessionRecord.value.sessionId,

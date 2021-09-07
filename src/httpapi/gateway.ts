@@ -1,6 +1,6 @@
 import * as express from 'express'
 import { RequestWithSession } from './session-middleware.js'
-import * as apiBroker from '@atek-cloud/api-broker'
+import * as apiBroker from '../broker/index.js'
 import jsonrpc from 'jsonrpc-lite'
 import { ParsedQs } from 'qs'
 import { IncomingMessage } from 'http'
@@ -32,7 +32,7 @@ export function setup (app: express.Application) {
         let apiRes = await apiBroker.routeRpc(callDesc, parsed.payload.method, params)
         if (typeof apiRes === 'undefined') apiRes = 0
         return res.status(200).json(jsonrpc.success(parsed.payload.id, apiRes))
-      } catch (e) {
+      } catch (e: any) {
         const rpcErr = e instanceof jsonrpc.JsonRpcError ? e : new jsonrpc.JsonRpcError(e.message || e.toString(), e.code || -32000, e.data)
         return res.status(200).json(jsonrpc.error(parsed.payload.id, rpcErr))
       }

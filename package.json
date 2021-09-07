@@ -43,7 +43,11 @@
     "typescript": "^4.3.5"
   },
   "dependencies": {
-    "@atek-cloud/api-broker": "^0.0.3",
+    "@atek-cloud/adb-api": "^1.0.0",
+    "@atek-cloud/adb-tables": "^1.0.1",
+    "@atek-cloud/inspect-api": "^1.0.0",
+    "@atek-cloud/node-rpc": "^4.0.1",
+    "@atek-cloud/services-api": "^1.0.0",
     "@atek-cloud/tsgen": "^0.0.4",
     "@hyperspace/rpc": "^1.15.1",
     "@hyperswarm/dht": "^4.0.1",
