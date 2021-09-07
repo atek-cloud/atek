@@ -48,7 +48,6 @@
     "@atek-cloud/inspect-api": "^1.0.0",
     "@atek-cloud/node-rpc": "^4.0.1",
     "@atek-cloud/services-api": "^1.0.0",
-    "@atek-cloud/tsgen": "^0.0.4",
     "@hyperspace/rpc": "^1.15.1",
     "@hyperswarm/dht": "^4.0.1",
     "@types/ws": "^7.4.7",

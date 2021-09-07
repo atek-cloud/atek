@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import subcommand from 'subcommand'
-import * as tsgen from '@atek-cloud/tsgen/dist/bin.js'
 import * as server from './index.js'
 import * as path from 'path'
 import { fileURLToPath } from 'url'
@@ -170,32 +169,6 @@ const cmdOpts = {
       usage,
       command: async (args: any) => {
         await apiCall(args, 'atek.cloud/services-api', 'restart', [args.id || args._[0]])
-      }
-    },
-    {
-      name: 'tsgen gen-file',
-      help: 'atek tsgen gen-file - Generate typescript from a d.ts file',
-      options: [
-        {name: 'in', help: 'The .d.ts input file path'},
-        {name: 'out', help: 'The path of the folder receiving the output'},
-        {name: 'env', help: 'The target environment. Must be node or host.'}
-      ],
-      usage,
-      command: (args: any) => {
-        tsgen.doGenerateFile(args)
-      }
-    },
-    {
-      name: 'tsgen gen-folder',
-      help: 'atek tsgen gen-folder - Generate typescript from a folder of d.ts files',
-      options: [
-        {name: 'in', help: 'The path of the folder containing the input d.ts files'},
-        {name: 'out', help: 'The path of the folder receiving the output'},
-        {name: 'env', help: 'The target environment. Must be node or host.'}
-      ],
-      usage,
-      command: (args: any) => {
-        tsgen.doGenerateFolder(args)
       }
     },
     {
