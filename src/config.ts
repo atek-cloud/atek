@@ -26,7 +26,6 @@ export class Config implements ConfigValues {
   configDir: string
   values: ConfigValues
   overrides: ConfigValues
-  error: Error | undefined
 
   static setActiveConfig (cfg: Config) {
     _activeConfig = cfg
@@ -40,7 +39,6 @@ export class Config implements ConfigValues {
   constructor (configDir: string, opts: ConfigValues) {
     this.configDir = configDir
     this.values = <ConfigValues>{}
-    this.error = undefined
     this.read()
     this.overrides = opts
   }
@@ -86,11 +84,20 @@ export class Config implements ConfigValues {
   }
 
   read () {
-    this.error = undefined
+    let str
     try {
-      this.values = JSON.parse(fs.readFileSync(this.filePath, 'utf8'))
+      str = fs.readFileSync(this.filePath, 'utf8')
+    } catch (e) {
+      // config doesnt exist, create it
+      this.values = {}
+      return
+    }
+    try {
+      this.values = JSON.parse(str)
     } catch (e: any) {
-      this.error = e
+      console.error('Failed to read config file', this.filePath)
+      console.error(e)
+      process.exit(1)
     }
   }
 
