@@ -190,7 +190,7 @@ export async function uninstall (id: string): Promise<void> {
     await services(serverdb.get()).delete(record.key)
     activeServices.delete(id)
   } finally {
-    release
+    release()
   }
 }
 
