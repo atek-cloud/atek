@@ -185,7 +185,7 @@ export async function uninstall (id: string): Promise<void> {
 
     get(id)?.stop()
     if (record.value?.package.sourceType === 'git') {
-      await fsp.rm(Config.getActiveConfig().packageInstallPath(id), {recursive: true})
+      await fsp.rm(Config.getActiveConfig().packageInstallPath(id), {recursive: true}).catch(e => undefined)
     }
     await services(serverdb.get()).delete(record.key)
     activeServices.delete(id)
@@ -221,6 +221,7 @@ export async function loadCoreService (params: InstallParams): Promise<ServiceIn
     params.port = await getAvailablePort(true)
   }
 
+  console.log('Loading core service', params)
   const {sourceType, installedVersion} = await fetchPackage(params)
   const manifest = await readManifestFile(params.id, params.sourceUrl)
   if (sourceType !== 'file') {

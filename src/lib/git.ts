@@ -13,6 +13,7 @@ export async function clone (id: string, url: string): Promise<string> {
   const dir = Config.getActiveConfig().packageInstallPath(id)
   await fs.promises.mkdir(dir, {recursive: true})
   try {
+    console.log('git clone', url, dir)
     await git.clone({fs, http, dir, url})
   } catch (e: any) {
     if (!url.endsWith('.git') && e.toString().includes('404')) {
@@ -25,6 +26,7 @@ export async function clone (id: string, url: string): Promise<string> {
 
 export async function fetch (id: string): Promise<void> {
   const dir = Config.getActiveConfig().packageInstallPath(id)
+  console.log('git fetch', dir)
   await git.fetch({fs, http, dir, tags: true})
 }
 
