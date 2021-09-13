@@ -51,6 +51,10 @@ export class Config implements ConfigValues {
     return path.join(this.configDir, 'packages', id)
   }
 
+  serviceSocketFilePath (id: string): string {
+    return path.join(this.configDir, 'sockets', `${id}.sock`)
+  }
+
   serviceLogPath (id: string): string {
     return path.join(this.configDir, 'logs', `${id}.log`)
   }

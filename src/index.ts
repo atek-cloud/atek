@@ -46,6 +46,7 @@ export async function start (opts: StartOpts) {
   Config.setActiveConfig(config)
   await fs.promises.mkdir(path.join(configDir, 'logs'), {recursive: true})
   await fs.promises.mkdir(path.join(configDir, 'packages'), {recursive: true})
+  await fs.promises.mkdir(path.join(configDir, 'sockets'), {recursive: true})
   // if (config.benchmarkMode) {
   //   perf.enable() TODO
   // }
@@ -212,7 +213,8 @@ function getProxy (service: ServiceInstance): httpProxy {
   let proxy = proxies.get(proxyId)
   if (!proxy) {
     proxy = httpProxy.createProxyServer({
-      target: {host: 'localhost', port: service.port}
+      // @ts-ignore socketPath is supported, but not included in their types
+      target: {socketPath: service.socketPath}
     })
     proxies.set(proxyId, proxy)
   }

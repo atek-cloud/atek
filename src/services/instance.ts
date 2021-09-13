@@ -3,12 +3,11 @@ import * as childProcess from 'child_process'
 import * as path from 'path'
 import { promises as fsp, createWriteStream, WriteStream } from 'fs'
 import { fileURLToPath } from 'url'
+import http from 'http'
 import { Config } from '../config.js'
 import { generateBearerToken } from '../lib/crypto.js'
-import { joinPath } from '../lib/strings.js'
 import { removeUndefinedsAtEndOfArray } from '../lib/functions.js'
 import lock from '../lib/lock.js'
-import fetch from 'node-fetch'
 import WebSocket, { createWebSocketStream } from 'ws'
 import jsonrpc from 'jsonrpc-lite'
 import { Service as AtekService, ServiceManifest, ApiExportDesc, ServiceConfig } from '@atek-cloud/adb-tables'
@@ -20,15 +19,19 @@ const NODE_PATH = process.execPath
 let _id = 1 // json-rpc ID incrementer
 
 export class ServiceInstance extends EventEmitter {
+  serviceKey: string
   settings: AtekService
+  socketPath: string
   protected config: ServiceConfig
   protected process: childProcess.ChildProcess | undefined
   protected logFileStream: WriteStream | undefined
   bearerToken: string
 
-  constructor (settings: AtekService, config?: ServiceConfig) {
+  constructor (serviceKey: string, settings: AtekService, config?: ServiceConfig) {
     super()
+    this.serviceKey = serviceKey
     this.settings = settings
+    this.socketPath = Config.getActiveConfig().serviceSocketFilePath(settings.id)
     this.config = {}
     this.process = undefined
     this.logFileStream = undefined
@@ -116,6 +119,9 @@ export class ServiceInstance extends EventEmitter {
     try {
       if (this.process) return
 
+      // delete any socket file leftover from before
+      await fsp.unlink(this.socketPath).catch(e => undefined)
+
       let thisProcess = this.process = await this.startNodeProcess()
       if (!this.process) throw new Error('Failed to start process')
       process.on('exit', () => thisProcess?.kill()) // make SURE this happens
@@ -171,9 +177,13 @@ export class ServiceInstance extends EventEmitter {
   async awaitServerActive (): Promise<boolean> {
     for (let i = 0; i < 100; i++) {
       try {
-        let res = await fetch(`http://localhost:${this.settings.port}/`, {method: 'HEAD'})
-        await res.text()
-        if (res.ok) return true
+        let {res} = await this.sendHttpRequest({
+          method: 'HEAD',
+          path: '/'
+        })
+        if (res.statusCode && (res.statusCode >= 200 && res.statusCode <= 400)) {
+          return true
+        }
       } catch (e) {}
       await new Promise(r => setTimeout(r, 100))
     }
@@ -184,13 +194,17 @@ export class ServiceInstance extends EventEmitter {
     const apiDesc = this.exportedApis.find(apiDesc => apiDesc.api === callDesc.api && (!apiDesc.transport || apiDesc.transport === 'rpc'))
     if (apiDesc) {
       const path = apiDesc.path || '/'
-      const url = joinPath(`http://localhost:${this.port}`, path)
-      const responseBody = await (await fetch(url, {
+      const {res, body} = await this.sendHttpRequest({
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(jsonrpc.request(_id++, methodName, removeUndefinedsAtEndOfArray(params)))
-      })).json()
-      const parsed = jsonrpc.parseObject(responseBody)
+        path,
+        headers: {'Content-Type': 'application/json'}
+      }, JSON.stringify(jsonrpc.request(_id++, methodName, removeUndefinedsAtEndOfArray(params))))
+      let parsedBody
+      try { parsedBody = JSON.parse(body || '') }
+      catch (e: any) {
+        throw jsonrpc.JsonRpcError.parseError(e.toString())
+      }
+      const parsed = jsonrpc.parseObject(parsedBody)
       if (parsed.type === 'error') {
         throw parsed.payload.error
       } else if (parsed.type === 'success') {
@@ -205,7 +219,7 @@ export class ServiceInstance extends EventEmitter {
   handleProxy (callDesc: apiBroker.CallDescription, socket: WebSocket) {
     const apiDesc = this.exportedApis.find(apiDesc => apiDesc.api === callDesc.api && apiDesc.transport === 'proxy')
     if (apiDesc) {
-      const remoteSocket = new WebSocket(`ws://localhost:${this.port}${apiDesc.path || '/'}`)
+      const remoteSocket = new WebSocket(`ws+unix://${this.socketPath}:${apiDesc.path || '/'}`)
       const s1 = createWebSocketStream(socket)
       const s2 = createWebSocketStream(remoteSocket)
       s1.pipe(s2).pipe(s1)
@@ -235,7 +249,8 @@ export class ServiceInstance extends EventEmitter {
     ]
     const opts = {
       env: Object.assign({}, this.config, {
-        ATEK_ASSIGNED_PORT: String(this.settings.port),
+        ATEK_ASSIGNED_SOCKET_FILE: this.socketPath,
+        // ATEK_ASSIGNED_PORT: String(this.settings.port),
         ATEK_HOST_PORT: String(hostcfg.port),
         ATEK_HOST_BEARER_TOKEN: this.bearerToken
       }) as NodeJS.ProcessEnv
@@ -249,6 +264,26 @@ export class ServiceInstance extends EventEmitter {
     this.log(`  Env: ${JSON.stringify(opts.env)}`)
     this.log('----------------------')
     return childProcess.spawn(NODE_PATH, args, opts)
+  }
+
+  sendHttpRequest (options: http.RequestOptions, body?: string|object): Promise<{res: http.IncomingMessage, body: string|undefined}> {
+    if (typeof body !== 'undefined' && typeof body !== 'string') {
+      body = JSON.stringify(body)
+    }
+    return new Promise((resolve, reject) => {
+      const req = http.request({
+        socketPath: this.socketPath,
+        ...options
+      }, (res: http.IncomingMessage) => {
+        let resBody = ''
+        res.setEncoding('utf8')
+        res.on('data', (chunk: string) => { resBody += chunk })
+        res.on('end', () => { resolve({res, body: resBody}) })
+      })
+      req.on('error', reject)
+      if (typeof body !== 'undefined') req.write(body)
+      req.end()
+    })
   }
 }
 

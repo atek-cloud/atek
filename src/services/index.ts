@@ -90,7 +90,7 @@ export async function loadCoreServices (): Promise<void> {
 export async function loadUserServices (): Promise<void> {
   const srvRecords = (await services(serverdb.get()).list()).records
   for (const srvRecord of srvRecords) {
-    if (srvRecord.value) await load(srvRecord.value)
+    if (srvRecord.value) await load(srvRecord.key, srvRecord.value)
   }
 }
 
@@ -107,6 +107,7 @@ export async function install (params: InstallParams, authedUsername: string): P
     params.id = await getAvailableId(params.sourceUrl)
   }
 
+  let recordKey = undefined
   const release = await lock(`services:${params.id}:ctrl`)
   try {
     if (!params.port) {
@@ -132,11 +133,12 @@ export async function install (params: InstallParams, authedUsername: string): P
       config: params.config,
       installedBy: authedUsername
     }
-    await services(serverdb.get()).create(recordValue)
+    const res = await services(serverdb.get()).create(recordValue)
+    recordKey = res.key
   } finally {
     release()
   }
-  const inst = await load(recordValue)
+  const inst = await load(recordKey, recordValue)
   if (!inst) throw new Error('Failed to load installed service')
   return inst
 }
@@ -194,12 +196,12 @@ export async function uninstall (id: string): Promise<void> {
   }
 }
 
-export async function load (settings: Service, config: ServiceConfig = {}): Promise<ServiceInstance| undefined> {
+export async function load (serviceKey: string, settings: Service, config: ServiceConfig = {}): Promise<ServiceInstance| undefined> {
   const id = settings.id
   const release = await lock(`services:${id}:ctrl`)
   try {
     if (!activeServices.has(id)) {
-      activeServices.set(id, new ServiceInstance(settings, Object.assign({}, settings.config, config)))
+      activeServices.set(id, new ServiceInstance(serviceKey, settings, Object.assign({}, settings.config, config)))
       await activeServices.get(id)?.setup()
       await activeServices.get(id)?.start()
     }
@@ -240,7 +242,7 @@ export async function loadCoreService (params: InstallParams): Promise<ServiceIn
     manifest,
     installedBy: 'system'
   }
-  const inst = await load(recordValue, params.config)
+  const inst = await load(genCoreServiceKey(), recordValue, params.config)
   if (!inst) throw new Error('Failed to load core service')
   return inst
 }
@@ -348,4 +350,9 @@ async function readManifestFile (id: string, sourceUrl: string): Promise<Service
 
 function assertIsManifest (obj: any): asserts obj is ServiceManifest {
   manifestValidator.assert(obj)
+}
+
+let _genCoreServiceKey = 1000
+function genCoreServiceKey () {
+  return `${_genCoreServiceKey++}`
 }
