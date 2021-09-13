@@ -6,6 +6,8 @@ import WebSocket, * as ws from 'ws'
 import httpProxy from 'http-proxy'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
+import isInstalledGlobally from 'is-installed-globally'
+import { selfupdate } from '@mishguru/selfupdate'
 import adb from '@atek-cloud/adb-api'
 import * as repl from './repl/index.js'
 import { Config, ConfigValues } from './config.js'
@@ -174,6 +176,24 @@ function createServer (config: Config) {
   })
 
   return server
+}
+
+export async function checkForUpdates (packageJsonPath: string) {
+  let packageJson
+  try {
+    packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
+  } catch (e) {
+    console.log('Failed to read package.json, unable to run auto-updater')
+    console.log('  Attempted to read:', packageJsonPath)
+    console.log('  Error:', e)
+  }
+  if (!packageJson || !isInstalledGlobally) {
+    console.log('Skipping auto-update as this app is not running as a global NPM module.')
+  } else {
+    await selfupdate(packageJson)
+  }
+
+  console.log('Running Atek', packageJson.version)
 }
 
 function json404 (res: express.Response, e: Error | string) {

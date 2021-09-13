@@ -18,7 +18,8 @@ const RUN_OPTS = [
   {name: 'configDir', help: 'Set the directory to read configuration from (defaults to "~/.atek")'}
 ]
 
-function runCommand (args: any): void {
+async function runCommand (args: any): Promise<void> {
+  await server.checkForUpdates(PACKAGE_JSON_PATH)
   server.start({
     port: args.port,
     domain: args.domain,
