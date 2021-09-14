@@ -322,7 +322,16 @@ async function fetchPackage (params: InstallParams) {
     try {
       await git.clone(params.id, params.sourceUrl)
     } catch (e: any) {
-      throw new Error(`Failed to install app. Is it a Git repo? ${e.toString()}`)
+      if (e.name !== 'CheckoutConflictError') {
+        throw new Error(`Failed to install app. Is it a Git repo? ${e.toString()}`)
+      }
+      console.log('Git clone failed due to a conflict in the package directory. Reinstalling package...')
+      await fsp.rm(Config.getActiveConfig().packageInstallPath(params.id), {recursive: true})
+      try {
+        await git.clone(params.id, params.sourceUrl)
+      } catch (e: any) {
+        throw new Error(`Failed to install app. Is it a Git repo? ${e.toString()}`)
+      }
     }
     sourceType = 'git'
     installedVersion = await git.getLatestVersion(params.id, params.desiredVersion || 'latest')

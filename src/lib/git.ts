@@ -32,7 +32,7 @@ export async function fetch (id: string): Promise<void> {
 
 export async function checkout (id: string, version: string): Promise<void> {
   const dir = Config.getActiveConfig().packageInstallPath(id)
-  await git.checkout({fs, dir, ref: version})
+  await git.checkout({fs, dir, ref: version, force: true})
 }
 
 export async function listVersions (id: string): Promise<PackageVersion[]> {
