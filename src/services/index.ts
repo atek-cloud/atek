@@ -9,7 +9,7 @@ import * as path from 'path'
 import { promises as fsp } from 'fs'
 import { Config } from '../config.js'
 import lock from '../lib/lock.js'
-import { sourceUrlToId, getAvailableId, getAvailablePort, getServiceRecordById } from './util.js'
+import { sourceUrlToId, getAvailableId, getServiceRecordById } from './util.js'
 import { createValidator } from '../schemas/util.js'
 
 const manifestValidator = createValidator({
@@ -94,7 +94,7 @@ export async function loadUserServices (): Promise<void> {
   }
 }
 
-export async function install (params: InstallParams, authedUsername: string): Promise<ServiceInstance> {
+export async function install (params: InstallParams, authedUserKey: string): Promise<ServiceInstance> {
   let recordValue
   if (!params.sourceUrl) {
     throw new Error('Source URL is required')
@@ -110,10 +110,6 @@ export async function install (params: InstallParams, authedUsername: string): P
   let recordKey = undefined
   const release = await lock(`services:${params.id}:ctrl`)
   try {
-    if (!params.port) {
-      params.port = await getAvailablePort()
-    }
-
     const {sourceType, installedVersion} = await fetchPackage(params)
     const manifest = await readManifestFile(params.id, params.sourceUrl)
     if (sourceType !== 'file') {
@@ -122,7 +118,7 @@ export async function install (params: InstallParams, authedUsername: string): P
 
     recordValue = {
       id: params.id,
-      port: params.port,
+      owningUserKey: authedUserKey,
       sourceUrl: params.sourceUrl,
       desiredVersion: params.desiredVersion,
       package: {
@@ -130,8 +126,7 @@ export async function install (params: InstallParams, authedUsername: string): P
         installedVersion
       },
       manifest,
-      config: params.config,
-      installedBy: authedUsername
+      config: params.config
     }
     const res = await services(serverdb.get()).create(recordValue)
     recordKey = res.key
@@ -155,7 +150,6 @@ export async function updateConfig (id: string, params: UpdateParams): Promise<v
       }
       record.value.id = params.id
     }
-    if (typeof params.port === 'number') record.value.port = params.port
     if (typeof params.sourceUrl === 'string') record.value.sourceUrl = params.sourceUrl
     if (typeof params.desiredVersion === 'string') record.value.desiredVersion = params.desiredVersion
     if (params.config) {
@@ -219,9 +213,6 @@ export async function loadCoreService (params: InstallParams): Promise<ServiceIn
   if (!params.id) {
     params.id = `core.${sourceUrlToId(params.sourceUrl)}`
   }
-  if (!params.port) {
-    params.port = await getAvailablePort(true)
-  }
 
   console.log('Loading core service', params)
   const {sourceType, installedVersion} = await fetchPackage(params)
@@ -232,15 +223,14 @@ export async function loadCoreService (params: InstallParams): Promise<ServiceIn
 
   const recordValue = {
     id: params.id,
-    port: params.port,
+    owningUserKey: 'system',
     sourceUrl: params.sourceUrl,
     desiredVersion: params.desiredVersion,
     package: {
       sourceType: sourceType as SourceTypeEnum,
       installedVersion
     },
-    manifest,
-    installedBy: 'system'
+    manifest
   }
   const inst = await load(genCoreServiceKey(), recordValue, params.config)
   if (!inst) throw new Error('Failed to load core service')

@@ -1,0 +1,117 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(37, 99, 235);
+  color: #fff;
+  width: 100vw;
+  height: 100vh;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  margin: 0;
+}
+
+.container {
+  width: 24rem;
+  margin-bottom: 20vh;
+}
+
+.animated-ring-container {
+  width: 12rem;
+  height: 12rem;
+  position: relative;
+  margin: 0 auto 2.5rem;
+}
+
+.animated-ring {
+  position: absolute;
+  width: 12rem;
+  height: 12rem;
+  border-radius: 9999px;
+  border: 1px solid #fff;
+  animation: animated-ring-anim 3s infinite;
+}
+
+@keyframes animated-ring-anim {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+}
+
+.logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 12rem;
+  height: 12rem;
+  border-radius: 9999px;
+  border: 8px solid #fff;
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+}
+
+.logo img {
+  position: relative;
+  top: -0.5rem;
+}
+
+app-login {
+  display: block;
+  padding: 1.5rem 2rem;
+}
+
+app-login form > div {
+  margin-bottom: 1.5rem;
+}
+
+app-login form > div:last-child {
+  margin-bottom: 0;
+}
+
+app-login form label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+app-login form input {
+  display: block;
+  margin-bottom: 0.25rem;
+  background-color: transparent;
+  padding: 1rem;
+  width: 100%;
+  color: #fff;
+  border: 1px solid #fffa;
+  border-radius: 0.25rem;
+  font-size: 1rem;
+  line-height: 1rem;
+}
+
+app-login form input::placeholder {
+  color: #fff6;
+}
+
+app-login form button {
+  display: block;
+  width: 100%;
+  font-size: 1.1rem;
+  color: #fff;
+  background-color: #1d53eb;
+  border: 1px solid #2463eb;
+  border-bottom-color: #0f41ab;
+  border-top-color: #4a7be7;
+  border-radius: 0.25rem;
+  padding: 0.7rem;
+}
+
+app-login form button:hover {
+  cursor: pointer;
+  box-shadow: 0 1px 2px #0004;
+}

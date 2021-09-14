@@ -1,5 +1,5 @@
 import WebSocket from 'ws'
-import { TransportEnum, ApiProvider, CallDescription, ServiceNotFound } from './types.js'
+import { TransportEnum, ApiProvider, CallDescription, CallContext, ServiceNotFound } from './types.js'
 export * from './types.js'
 
 class Registration {
@@ -48,14 +48,14 @@ export function findProvider (callDesc: CallDescription): Registration|undefined
   })
 }
 
-export function routeRpc (callDesc: CallDescription, methodName: string, params: any[]): Promise<any> {
+export function routeRpc (callDesc: CallDescription, methodName: string, params: any[], ctx: CallContext): Promise<any> {
   const reg = findProvider(callDesc)
   if (!reg?.provider?.handleRpc) throw new ServiceNotFound(`No service available which matches ${JSON.stringify(callDesc)}`)
-  return reg.provider.handleRpc(callDesc, methodName, params)
+  return reg.provider.handleRpc(callDesc, methodName, params, ctx)
 }
 
-export function routeProxy (callDesc: CallDescription, socket: WebSocket): void {
+export function routeProxy (callDesc: CallDescription, socket: WebSocket, ctx: CallContext): void {
   const reg = findProvider(callDesc)
   if (!reg?.provider?.handleProxy) throw new ServiceNotFound(`No service available which matches ${JSON.stringify(callDesc)}`)
-  reg.provider.handleProxy(callDesc, socket)
+  reg.provider.handleProxy(callDesc, socket, ctx)
 }

@@ -1,5 +1,5 @@
 import * as express from 'express'
-import { RequestWithSession } from './session-middleware.js'
+import { RequestWithSession, Session } from './session-middleware.js'
 import * as apiBroker from '../broker/index.js'
 import jsonrpc from 'jsonrpc-lite'
 import { ParsedQs } from 'qs'
@@ -11,10 +11,12 @@ export function setup (app: express.Application) {
   console.log('Enabling /_atek/gateway endpoints')
 
   app.use('/_atek/gateway', (req: RequestWithSession, res: express.Response, next: express.NextFunction) => {
-    // if (!req.session?.isAppAuthed()) { // TODO
-    //   res.status(401).json({error: true, message: 'Not authorized'})
-    //   return
-    // }
+    if (!req.session?.isAuthed()) {
+      console.log(req.headers)
+      console.log('Not authed')
+      res.status(401).json({error: true, message: 'Not authorized'})
+      return
+    }
     next()
   })
 
@@ -29,7 +31,7 @@ export function setup (app: express.Application) {
     } else if (parsed.type === 'request') {
       try {
         const params = Array.isArray(parsed.payload.params) ? parsed.payload.params : []
-        let apiRes = await apiBroker.routeRpc(callDesc, parsed.payload.method, params)
+        let apiRes = await apiBroker.routeRpc(callDesc, parsed.payload.method, params, {session: req.session})
         if (typeof apiRes === 'undefined') apiRes = 0
         return res.status(200).json(jsonrpc.success(parsed.payload.id, apiRes))
       } catch (e: any) {
@@ -41,7 +43,7 @@ export function setup (app: express.Application) {
   })
 }
 
-export function handleWebSocket (ws: WebSocket, req: IncomingMessage) {
+export function handleWebSocket (ws: WebSocket, req: IncomingMessage, session: Session) {
   const urlp = new URL(req.url || '/', 'http://localhost/') // the domain isn't important, we just need to parse the query params
   const callDesc = {
     transport: apiBroker.TransportEnum.PROXY,
@@ -49,18 +51,12 @@ export function handleWebSocket (ws: WebSocket, req: IncomingMessage) {
   }
 
   try {
-    apiBroker.routeProxy(callDesc, ws)
+    apiBroker.routeProxy(callDesc, ws, {session})
   } catch (e) {
     console.error('Failed to route call', callDesc)
     console.error(e)
     ws.close()
   }
-
-  // ws.on('message', function incoming(message) {
-  //   console.log('received: %s', message);
-  // });
-
-  // ws.send(JSON.stringify(callDesc));
 }
 
 

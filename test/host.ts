@@ -19,8 +19,6 @@ test.serial('Correctly loads core services (hyper, adb) and creates server db', 
   t.is(activeCfg.coreServices[1].sourceUrl, cfg.coreServices[1].sourceUrl, 'Core services config match what we passed')
   t.truthy(activeCfg.coreServices[0].id, 'Core services are active')
   t.truthy(activeCfg.coreServices[1].id, 'Core services are active')
-  t.truthy(activeCfg.coreServices[0].port, 'Core services are active')
-  t.truthy(activeCfg.coreServices[1].port, 'Core services are active')
 })
 
 test.serial('Routes calls to the server db', async t => {
@@ -28,7 +26,7 @@ test.serial('Routes calls to the server db', async t => {
   t.truthy(desc, 'Returns a description object')
   t.is(desc.dbId, activeCfg.serverDbId, 'Gave the correct database\'s description')
   t.truthy(desc.tables.find((table: any) => table.tableId === 'atek.cloud/database'), 'Registered atek.cloud/database')
-  t.truthy(desc.tables.find((table: any) => table.tableId === 'atek.cloud/account'), 'Registered atek.cloud/account')
-  t.truthy(desc.tables.find((table: any) => table.tableId === 'atek.cloud/account-session'), 'Registered atek.cloud/account-session')
+  t.truthy(desc.tables.find((table: any) => table.tableId === 'atek.cloud/user'), 'Registered atek.cloud/user')
+  t.truthy(desc.tables.find((table: any) => table.tableId === 'atek.cloud/user-session'), 'Registered atek.cloud/user-session')
   t.truthy(desc.tables.find((table: any) => table.tableId === 'atek.cloud/service'), 'Registered atek.cloud/service')
 })

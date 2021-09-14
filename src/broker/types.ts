@@ -1,4 +1,5 @@
 import WebSocket from 'ws'
+import { Session } from '../httpapi/session-middleware.js'
 
 export enum TransportEnum {
   PROXY = 'proxy',
@@ -7,8 +8,8 @@ export enum TransportEnum {
 
 export interface ApiProvider {
   id: string
-  handleRpc? (callDesc: CallDescription, methodName: string, params: any[]): Promise<any>
-  handleProxy? (callDesc: CallDescription, socket: WebSocket): any
+  handleRpc? (callDesc: CallDescription, methodName: string, params: any[], ctx: CallContext): Promise<any>
+  handleProxy? (callDesc: CallDescription, socket: WebSocket, ctx: CallContext): any
 }
 
 export interface CallDescription {
@@ -17,8 +18,8 @@ export interface CallDescription {
   api?: string
 }
 
-export interface HandlerFn {
-  (callDesc: CallDescription, methodName: string, params: any[]): Promise<any>
+export interface CallContext {
+  session?: Session
 }
 
 export class CustomError extends Error {

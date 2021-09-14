@@ -15,6 +15,7 @@ export function verifyPassword (password: string, hash: string): Promise<boolean
     const [salt, key] = hash.split(':')
     crypto.scrypt(password, salt, 64, (err, derivedKey) => {
       if (err) reject(err)
+      // TODO constant time compare
       resolve(key == derivedKey.toString('hex'))
     })
   })

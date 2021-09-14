@@ -13,6 +13,7 @@ import jsonrpc from 'jsonrpc-lite'
 import { Service as AtekService, ServiceManifest, ApiExportDesc, ServiceConfig } from '@atek-cloud/adb-tables'
 import { ServiceInfo, StatusEnum } from '@atek-cloud/services-api'
 import * as apiBroker from '../broker/index.js'
+import { Session } from '../httpapi/session-middleware.js'
 
 const NODE_PATH = process.execPath
 
@@ -47,9 +48,6 @@ export class ServiceInstance extends EventEmitter {
     return this.settings.id
   }
 
-  get port (): number {
-    return this.settings.port
-  }
 
   get manifest (): ServiceManifest {
     return this.settings.manifest || {}
@@ -190,14 +188,17 @@ export class ServiceInstance extends EventEmitter {
     return false
   }
 
-  async handleRpc (callDesc: apiBroker.CallDescription, methodName: string, params: unknown[]): Promise<unknown> {
+  async handleRpc (callDesc: apiBroker.CallDescription, methodName: string, params: unknown[], ctx: apiBroker.CallContext): Promise<unknown> {
     const apiDesc = this.exportedApis.find(apiDesc => apiDesc.api === callDesc.api && (!apiDesc.transport || apiDesc.transport === 'rpc'))
     if (apiDesc) {
       const path = apiDesc.path || '/'
       const {res, body} = await this.sendHttpRequest({
         method: 'POST',
         path,
-        headers: {'Content-Type': 'application/json'}
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(ctx.session)
+        }
       }, JSON.stringify(jsonrpc.request(_id++, methodName, removeUndefinedsAtEndOfArray(params))))
       let parsedBody
       try { parsedBody = JSON.parse(body || '') }
@@ -216,10 +217,10 @@ export class ServiceInstance extends EventEmitter {
     throw new apiBroker.ServiceNotFound('API not found')
   }
 
-  handleProxy (callDesc: apiBroker.CallDescription, socket: WebSocket) {
+  handleProxy (callDesc: apiBroker.CallDescription, socket: WebSocket, ctx: apiBroker.CallContext) {
     const apiDesc = this.exportedApis.find(apiDesc => apiDesc.api === callDesc.api && apiDesc.transport === 'proxy')
     if (apiDesc) {
-      const remoteSocket = new WebSocket(`ws+unix://${this.socketPath}:${apiDesc.path || '/'}`)
+      const remoteSocket = new WebSocket(`ws+unix://${this.socketPath}:${apiDesc.path || '/'}`, {headers: getAuthHeaders(ctx.session)})
       const s1 = createWebSocketStream(socket)
       const s2 = createWebSocketStream(remoteSocket)
       s1.pipe(s2).pipe(s1)
@@ -250,7 +251,6 @@ export class ServiceInstance extends EventEmitter {
     const opts = {
       env: Object.assign({}, this.config, {
         ATEK_ASSIGNED_SOCKET_FILE: this.socketPath,
-        // ATEK_ASSIGNED_PORT: String(this.settings.port),
         ATEK_HOST_PORT: String(hostcfg.port),
         ATEK_HOST_BEARER_TOKEN: this.bearerToken
       }) as NodeJS.ProcessEnv
@@ -259,7 +259,7 @@ export class ServiceInstance extends EventEmitter {
     this.log(`Starting service process ${this.id}`)
     this.log(`  WARNING: No sandbox is present. This application has full access to the host system.`)
     this.log(`  Path: ${scriptPath}`)
-    this.log(`  External port: ${this.port}`)
+    this.log(`  Socket: ${this.socketPath}`)
     this.log(`  Call: ${NODE_PATH} ${args.join(' ')}`)
     this.log(`  Env: ${JSON.stringify(opts.env)}`)
     this.log('----------------------')
@@ -290,4 +290,17 @@ export class ServiceInstance extends EventEmitter {
 const ANSI_REGEX = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g
 function stripANSICodes (str: string): string {
   return str.replace(ANSI_REGEX, '')
+}
+
+interface Headers {
+  [key: string]: string
+}
+function getAuthHeaders (session?: Session): Headers {
+  const authHeaders: Headers = {}
+  if (session?.isAuthed()) {
+    const auth = session?.auth
+    if (auth?.serviceKey) authHeaders['Atek-Authed-Service'] = auth.serviceKey
+    if (auth?.username) authHeaders['Atek-Authed-User'] = auth.username
+  }
+  return authHeaders
 }

@@ -15,10 +15,10 @@ export async function setup () {
   if (!cfg.serverDbId) throw new Error('Unable to setup host database: no server DB configured')
   serverdb = adb.db(cfg.serverDbId)
   await Promise.all([
-    tables.accounts(serverdb).isReady,
-    tables.accountSessions(serverdb).isReady,
     tables.databases(serverdb).isReady,
     tables.services(serverdb).isReady,
+    tables.users(serverdb).isReady,
+    tables.userSessions(serverdb).isReady
   ])
 }
 

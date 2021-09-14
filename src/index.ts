@@ -8,6 +8,7 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import isInstalledGlobally from 'is-installed-globally'
 import { selfupdate } from '@mishguru/selfupdate'
+import { parse as parseCookie } from '@tinyhttp/cookie'
 import adb from '@atek-cloud/adb-api'
 import * as repl from './repl/index.js'
 import { Config, ConfigValues } from './config.js'
@@ -23,6 +24,9 @@ import * as rpcapi from './rpcapi/index.js'
 import fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
+import { fileURLToPath } from 'url'
+
+const HERE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 let app
 
@@ -54,6 +58,7 @@ export async function start (opts: StartOpts) {
 
   // configure any rpc apis atek is using
   adb.api.$setEndpoint({port: config.port})
+  adb.api.$setAuthHeader(`Bearer ${config.systemAuthTokens[0]}`)
 
   repl.setup()
   const server = createServer(config)
@@ -96,6 +101,7 @@ function createServer (config: Config) {
   app.use(cookieParser())
   app.use(sessionMiddleware.setup())
 
+  // rate limiter
   const rl = new RateLimiter({
     limit: 10000,
     window: 60e3
@@ -114,6 +120,17 @@ function createServer (config: Config) {
     next()
   })
 
+  // auth
+  // TODO
+  /*app.use((req: sessionMiddleware.RequestWithSession, res: express.Response, next: express.NextFunction) => {
+    if (!isRequestSafe(config, req) && !req.session?.isAuthed()) {
+      return res.redirect(`http://${config.domain}/_atek/login`)
+    } else {
+      next()
+    }
+  })*/
+
+  // subdomain proxies
   const suffix = `.${config.domain}`
   const slice = suffix.length * -1
   app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -137,9 +154,13 @@ function createServer (config: Config) {
     }
   })
 
+  // API servers
   app.use('/_atek', express.json())
+  app.use('/_atek/login/', express.static(path.join(HERE_PATH, 'static', 'login')))
   apiGatewayHttpApi.setup(app)
   app.use('/_atek', (req: express.Request, res: express.Response) => json404(res, 'Not found'))
+
+  // "main service"
   app.use((req: express.Request, res: express.Response) => {
     if (config.mainService) {
       const service = services.get(config.mainService)
@@ -158,9 +179,11 @@ function createServer (config: Config) {
   })
 
   const wsServer = new ws.WebSocketServer({ noServer: true })
-  wsServer.on('connection', (socket: WebSocket, req: http.IncomingMessage) => {
+  wsServer.on('connection', async (socket: WebSocket, req: http.IncomingMessage) => {
     if (/\/_atek\/gateway(\?|\/$|$)/.test(req.url || '/')) {
-      apiGatewayHttpApi.handleWebSocket(socket, req)
+      const cookie: any = req.headers.cookie ? parseCookie(req.headers.cookie) : undefined
+      const session = new sessionMiddleware.Session(undefined, undefined, await sessionMiddleware.getSessionAuth(req.headers.authorization, cookie?.session))
+      apiGatewayHttpApi.handleWebSocket(socket, req, session)
     } else {
       socket.close()
     }
@@ -209,7 +232,7 @@ function proxyError (e: Error, res: express.Response, id: string) {
 
 const proxies = new Map<string, httpProxy>()
 function getProxy (service: ServiceInstance): httpProxy {
-  const proxyId = `${service.id}:${service.port}` // we include the port to ensure a new proxy is found if the port is changed
+  const proxyId = service.id
   let proxy = proxies.get(proxyId)
   if (!proxy) {
     proxy = httpProxy.createProxyServer({
@@ -219,4 +242,9 @@ function getProxy (service: ServiceInstance): httpProxy {
     proxies.set(proxyId, proxy)
   }
   return proxy
+}
+
+function isRequestSafe (config: Config, req: express.Request): boolean {
+  const host = (req.headers.host || '').split(':')[0]
+  return (!host || host === config.domain) && req.path.startsWith('/_atek/')
 }

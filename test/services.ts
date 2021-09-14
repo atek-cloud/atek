@@ -25,7 +25,6 @@ test.serial('Install, configure, and uninstall a service', async t => {
   const installRes = await srvapi('install', [{sourceUrl: `file://${SIMPLE_APP_PATH}`}])
   t.is(installRes.status, 'active', 'New service is active')
   t.is(typeof installRes.settings.id, 'string', 'ID is assigned')
-  t.is(typeof installRes.settings.port, 'number', 'Port is assigned')
   t.is(installRes.settings.sourceUrl, `file://${SIMPLE_APP_PATH}`, 'Source URL is correct')
   t.is(installRes.settings.package.sourceType, 'file', 'Source type is correct')
   t.is(installRes.settings.manifest.name, `NAME`, 'Manifest is correct')
