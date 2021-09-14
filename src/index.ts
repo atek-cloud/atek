@@ -20,6 +20,7 @@ import { setup as setupServerDb } from './serverdb/index.js'
 import * as sessionMiddleware from './httpapi/session-middleware.js'
 import * as apiGatewayHttpApi from './httpapi/gateway.js'
 import * as rpcapi from './rpcapi/index.js'
+import * as setupFlow from './setup-flow.js'
 // import * as perf from './lib/perf.js' TODO
 // import * as metrics from './lib/metrics.js' TODO
 import fs from 'fs'
@@ -70,13 +71,14 @@ export async function start (opts: StartOpts) {
   await services.setup()
   await services.loadCoreServices()
   await setupServerDb()
-  /* dont await */services.loadUserServices().catch(err => {
+  rpcapi.setup()
+  services.loadUserServices().catch(err => {
     console.log('Error while loading user services:')
     console.log(err)
+  }).then(() => {
+    // run setup flow if needed
+    setupFlow.run()
   })
-
-  // setup rpc apis
-  rpcapi.setup()
 
   process.on('SIGINT', close)
   process.on('SIGTERM', close)
