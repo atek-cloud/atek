@@ -10,6 +10,7 @@ import isInstalledGlobally from 'is-installed-globally'
 import { selfupdate } from '@mishguru/selfupdate'
 import { parse as parseCookie } from '@tinyhttp/cookie'
 import adb from '@atek-cloud/adb-api'
+import * as cli from './lib/cli.js'
 import * as repl from './repl/index.js'
 import { Config, ConfigValues } from './config.js'
 import { generateBearerToken } from './lib/crypto.js'
@@ -42,6 +43,7 @@ declare module 'ws' {
 export * as test from './test.js'
 
 export async function start (opts: StartOpts) {
+  cli.status('Initializing Atek')
   const configDir = opts.configDir || path.join(os.homedir(), '.atek')
   const config = new Config(configDir, opts)
   if (!config.systemAuthTokens?.length) {
@@ -59,6 +61,7 @@ export async function start (opts: StartOpts) {
   // configure any rpc apis atek is using
   adb.api.$setEndpoint({port: config.port})
   adb.api.$setAuthHeader(`Bearer ${config.systemAuthTokens[0]}`)
+  cli.endStatus()
 
   repl.setup()
   const server = createServer(config)

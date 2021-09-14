@@ -6,6 +6,7 @@
   "bin": "dist/bin.js",
   "type": "module",
   "scripts": {
+    "start": "node dist/bin.js",
     "build": "tsc --project tsconfig.json",
     "test": "ava -s test/*.ts"
   },
@@ -57,11 +58,15 @@
     "@types/ws": "^7.4.7",
     "ajv": "^8.6.2",
     "ajv-formats": "^2.1.0",
+    "ansi-escapes": "^5.0.0",
     "await-lock": "^2.1.0",
     "bytes": "^3.1.0",
+    "chalk": "^4.1.2",
+    "cli-spinners": "^2.6.0",
     "cookie-parser": "^1.4.5",
     "cors": "^2.8.5",
     "express": "^4.17.1",
+    "figures": "^3.2.0",
     "http-proxy": "^1.18.1",
     "hyperspace": "^3.19.0",
     "is-installed-globally": "^0.4.0",
@@ -77,6 +82,7 @@
     "random-access-memory": "^3.1.2",
     "semver": "^7.3.5",
     "subcommand": "^2.1.1",
+    "term-size": "^3.0.0",
     "tmp": "^0.2.1",
     "uuid": "^8.3.2",
     "ws": "^8.1.0"

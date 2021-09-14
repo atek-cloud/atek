@@ -7,6 +7,8 @@ import * as npm from '../lib/npm.js'
 import { fileURLToPath } from 'url'
 import * as path from 'path'
 import { promises as fsp } from 'fs'
+import * as cli from '../lib/cli.js'
+import chalk from 'chalk'
 import { Config } from '../config.js'
 import lock from '../lib/lock.js'
 import { sourceUrlToId, getAvailableId, getServiceRecordById } from './util.js'
@@ -75,9 +77,13 @@ export function setup (): void {
 
 export async function loadCoreServices (): Promise<void> {
   const cfg = Config.getActiveConfig()
+  cli.status('Loading core services')
+  let i = 0
   for (const serviceParams of cfg.coreServices) {
+    cli.status('Loading core services', cli.genProgress(i++, cfg.coreServices.length), 'Now loading:', chalk.green(serviceParams.sourceUrl))
     await loadCoreService(serviceParams)
   }
+  cli.endStatus('Loaded core services')
 
   await adb.api.init({serverDbId: cfg.serverDbId || ''})
   const {serverDbId} = await adb.api.getConfig()
@@ -88,10 +94,14 @@ export async function loadCoreServices (): Promise<void> {
 }
 
 export async function loadUserServices (): Promise<void> {
+  cli.status('Loading installed services')
+  let i = 0
   const srvRecords = (await services(serverdb.get()).list()).records
   for (const srvRecord of srvRecords) {
-    if (srvRecord.value) await load(srvRecord.key, srvRecord.value)
+    cli.status('Loading installed services', cli.genProgress(i++, srvRecords.length), 'Now loading:', chalk.green(srvRecord.value.sourceUrl))
+    await load(srvRecord.key, srvRecord.value)
   }
+  cli.endStatus('Loaded installed services')
 }
 
 export async function install (params: InstallParams, authedUserKey: string): Promise<ServiceInstance> {
