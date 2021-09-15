@@ -225,9 +225,9 @@ export async function loadCoreService (params: InstallParams): Promise<ServiceIn
   }
 
   console.log('Loading core service', params)
-  const {sourceType, installedVersion} = await fetchPackage(params)
+  const {sourceType, installedVersion, didChange} = await fetchPackage(params)
   const manifest = await readManifestFile(params.id, params.sourceUrl)
-  if (sourceType !== 'file') {
+  if (sourceType !== 'file' && didChange) {
     await npm.setupPackage(params.id, getInstallPath(params.id, params.sourceUrl))
   }
 
@@ -318,6 +318,7 @@ async function fetchPackage (params: InstallParams) {
 
   let sourceType = 'file'
   let installedVersion = undefined
+  let didChange = false
   if (params?.sourceUrl && !params.sourceUrl.startsWith('file://')) {
     try {
       await git.clone(params.id, params.sourceUrl)
@@ -334,14 +335,17 @@ async function fetchPackage (params: InstallParams) {
       }
     }
     sourceType = 'git'
+    const prevVersion = await git.getCurrentVersion(params.id)
     installedVersion = await git.getLatestVersion(params.id, params.desiredVersion || 'latest')
     if (!installedVersion) {
       throw new Error(`This git repo has not published any releases.`)
     }
     await git.checkout(params.id, installedVersion)
+    didChange = prevVersion !== installedVersion
+    console.log({didChange, prevVersion, installedVersion})
   }
 
-  return {sourceType, installedVersion}
+  return {sourceType, installedVersion, didChange}
 }
 
 async function readManifestFile (id: string, sourceUrl: string): Promise<ServiceManifest | undefined> {

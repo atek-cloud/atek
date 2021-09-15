@@ -43,6 +43,20 @@ export async function listVersions (id: string): Promise<PackageVersion[]> {
     .filter(v => typeof v.version === 'string')
 }
 
+export async function getCurrentVersion (id: string): Promise<string|undefined> {
+  const dir = Config.getActiveConfig().packageInstallPath(id)
+  const head = await git.resolveRef({fs, dir, ref: 'HEAD'})
+  const tags = await git.listTags({fs, dir})
+  let currentTag
+  for (let tag of tags) {
+    if (await git.resolveRef({fs, dir, ref: tag}) === head) {
+      currentTag = tag
+      break
+    }
+  }
+  return currentTag && semver.valid(semver.coerce(currentTag)) ? currentTag : undefined
+}
+
 export async function getLatestVersion (id: string, spec: string): Promise<string> {
   let versions = await listVersions(id)
   if (versions.length === 0) {
