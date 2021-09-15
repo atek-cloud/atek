@@ -22,5 +22,5 @@ export function verifyPassword (password: string, hash: string): Promise<boolean
 }
 
 export function generateBearerToken (): string {
-  return crypto.randomBytes(8).toString('hex')
+  return crypto.randomBytes(32).toString('hex')
 }
