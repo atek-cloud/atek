@@ -5,6 +5,13 @@ import * as serverdb from '../serverdb/index.js'
 import { hashPassword } from '../lib/crypto.js'
 import lock from '../lib/lock.js'
 
+const RESERVED_USERNAMES = ['system']
+function assertNotReserved (username: string) {
+  if (RESERVED_USERNAMES.includes(username)) {
+    throw new Error(`The username ${username} is reserved`)
+  }
+}
+
 // TODO auth
 
 export function setup (): AtekRpcServer  {
@@ -40,6 +47,7 @@ export function setup (): AtekRpcServer  {
         if (records.find((r: any) => r.value.username === user.username)) {
           throw new Error(`This username has already been taken`)
         }
+        assertNotReserved(user.username)
         const record = await users(serverdb.get()).create({
           username: user.username,
           hashedPassword: await hashPassword(user.password),
@@ -61,7 +69,14 @@ export function setup (): AtekRpcServer  {
       try {
         const record = await users(serverdb.get()).get(userKey)
         if (!record) throw new Error(`User not found under key ${userKey}`)
-        if (typeof user.username === 'string') record.value.username = user.username
+        if (typeof user.username === 'string') {
+          const {records} = await users(serverdb.get()).list()
+          if (records.find((r: any) => r.value.username === user.username)) {
+            throw new Error(`This username has already been taken`)
+          }
+          assertNotReserved(user.username)
+          record.value.username = user.username
+        }
         if (typeof user.password === 'string') record.value.hashedPassword = await hashPassword(user.password)
         if (typeof user.role === 'string') record.value.role = user.role
         await users(serverdb.get()).put(record.key, record.value)
