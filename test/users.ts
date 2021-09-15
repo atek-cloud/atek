@@ -3,8 +3,6 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import * as atek from '../dist/index.js'
 
-const SIMPLE_APP_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'util', 'simple-app')
-
 let inst: any
 test.after(async () => {
   await inst.close()
@@ -47,7 +45,7 @@ test.serial('Create, list, get, update, delete users', async t => {
 
 test.serial('Login, whoami, logout', async t => {
   const usersapi = await inst.api('atek.cloud/users-api')
-  const sessapi = await inst.api('atek.cloud/user-sessions-api')
+  const sessapi = await inst.api('atek.cloud/user-sessions-api', {noAuth: true})
   
   await usersapi('create', [{username: 'bob', password: 'hunter2'}])
 

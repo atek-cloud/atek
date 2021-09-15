@@ -4,7 +4,7 @@ import jsonrpc from 'jsonrpc-lite'
 import { removeUndefinedsAtEndOfArray } from './functions.js'
 
 let _id = 1
-export function createApi (origin: string, apiDesc: string|NodeJS.Dict<string>, authToken: string) {
+export function createApi (origin: string, apiDesc: string|NodeJS.Dict<string>, authToken?: string) {
   const qp = new URLSearchParams(typeof apiDesc === 'string' ? {api: apiDesc} : apiDesc)
   const url = `${origin}/_atek/gateway?${qp.toString()}`
   const cookieJar = new CookieJar()
@@ -12,7 +12,7 @@ export function createApi (origin: string, apiDesc: string|NodeJS.Dict<string>, 
   return async (methodName: string, params: any[] = []): Promise<any> => {
     const responseBody = await (await fetch(cookieJar, url, {
       method: 'POST',
-      headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}`},
+      headers: {'Content-Type': 'application/json', 'Authorization': authToken ? `Bearer ${authToken}` : undefined},
       body: JSON.stringify(jsonrpc.request(_id++, methodName, removeUndefinedsAtEndOfArray(params)))
     })).json()
     const parsed = jsonrpc.parseObject(responseBody)

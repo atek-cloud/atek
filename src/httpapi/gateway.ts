@@ -12,7 +12,7 @@ export function setup (app: express.Application) {
 
   app.use('/_atek/gateway', (req: RequestWithSession, res: express.Response, next: express.NextFunction) => {
     if (!req.session?.isAuthed()) {
-      if (queryParamToString(req.query.api) === 'atek.cloud/user-sessions-api' && req.body.method === 'login') {
+      if (queryParamToString(req.query.api) === 'atek.cloud/user-sessions-api' && (req.body.method === 'login' || req.body.method === 'whoami')) {
         return next() // allow this call only
       }
       res.status(401).json({error: true, message: 'Not authorized'})

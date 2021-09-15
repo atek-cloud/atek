@@ -12,12 +12,11 @@ function assertNotReserved (username: string) {
   }
 }
 
-// TODO auth
-
 export function setup (): AtekRpcServer  {
   return createServer({
     // List current users
     async list (): Promise<{users: User[]}> {
+      this.session.assertIsAdminAuthed()
       const {records} = await users(serverdb.get()).list()
       return {
         users: records.map((record: any) => ({
@@ -30,6 +29,7 @@ export function setup (): AtekRpcServer  {
   
     // Get a user
     async get (userKey: string): Promise<User> {
+      this.session.assertIsAdminAuthed()
       const record = await users(serverdb.get()).get(userKey)
       if (!record) throw new Error(`User not found under key ${userKey}`)
       return {
@@ -41,6 +41,7 @@ export function setup (): AtekRpcServer  {
   
     // Create a user
     async create (user: NewUser): Promise<User> {
+      this.session.assertIsAdminAuthed()
       const release = await lock('users-api:mutation')
       try {
         const {records} = await users(serverdb.get()).list()
@@ -65,6 +66,7 @@ export function setup (): AtekRpcServer  {
   
     // Update a user
     async update (userKey: string, user: UserUpdate): Promise<User> {
+      this.session.assertIsAdminAuthed()
       const release = await lock('users-api:mutation')
       try {
         const record = await users(serverdb.get()).get(userKey)
@@ -92,6 +94,7 @@ export function setup (): AtekRpcServer  {
   
     // Delete a user
     async delete (userKey: string): Promise<void> {
+      this.session.assertIsAdminAuthed()
       const release = await lock('users-api:mutation')
       try {
         await users(serverdb.get()).delete(userKey)

@@ -48,8 +48,8 @@ export class TestInstance {
     this.authToken = authToken
   }
 
-  api (apiDesc: string|NodeJS.Dict<string>) {
-    return createApi(this.url, apiDesc, this.authToken)
+  api (apiDesc: string|NodeJS.Dict<string>, {noAuth} = {noAuth: false}) {
+    return createApi(this.url, apiDesc, noAuth ? undefined : this.authToken)
   }
 
   async close () {

@@ -2,7 +2,7 @@ import * as express from 'express'
 import { v4 as uuidv4 } from 'uuid'
 import { Config } from '../config.js'
 import * as serverdb from '../serverdb/index.js'
-import { userSessions } from '@atek-cloud/adb-tables'
+import { users, userSessions } from '@atek-cloud/adb-tables'
 import * as services from '../services/index.js'
 
 const bindSessionTokens = new Map<string, string>()
@@ -12,6 +12,7 @@ export interface SessionAuth {
   userKey?: string
   username?: string
   serviceKey?: string
+  role?: string
 }
 
 export interface RequestWithSession extends express.Request {
@@ -30,18 +31,38 @@ export class Session {
   }
 
   isAuthed (): boolean {
-    return Boolean(this.auth && (this.auth.sessionId || this.auth.serviceKey))
+    return Boolean(this.auth && (this.auth.userKey || this.auth.serviceKey))
+  }
+  
+  assertIsAuthed () {
+    if (!this.isAuthed()) throw new Error('Not authorized')
   }
 
   isAppAuthed (): boolean {
     return Boolean(this.auth && this.auth.serviceKey)
   }
+  
+  assertIsAppAuthed () {
+    if (!this.isAppAuthed()) throw new Error('Not authorized')
+  }
 
   isAccountAuthed (): boolean {
     return Boolean(this.auth && this.auth.userKey)
   }
+  
+  assertIsAccountAuthed () {
+    if (!this.isAccountAuthed()) throw new Error('Not authorized')
+  }
 
-  async create ({userKey, username}: {userKey: string, username: string}): Promise<void> {
+  isAdminAuthed (): boolean {
+    return this.isAccountAuthed() && (this.auth?.userKey === 'system' || this.auth?.role === 'admin')
+  }
+  
+  assertIsAdminAuthed () {
+    if (!this.isAdminAuthed()) throw new Error('Not authorized')
+  }
+
+  async create ({userKey, username, role}: {userKey: string, username: string, role: string}): Promise<void> {
     if (!this.req || !this.res) throw new Error('Unable to create session on this request')
     const sess = {
       sessionId: uuidv4(),
@@ -52,7 +73,8 @@ export class Session {
     this.auth = {
       sessionId: sess.sessionId,
       userKey,
-      username
+      username,
+      role
     }
     this.res.cookie('session', sess.sessionId, {
       httpOnly: true,
@@ -64,6 +86,8 @@ export class Session {
     if (!this.req || !this.res) throw new Error('Unable to create session on this request')
     const sessionRecord = await userSessions(serverdb.get()).get(sessionId).catch((e: any) => undefined)
     if (!sessionRecord) return false
+    const userRecord = await users(serverdb.get()).get(sessionRecord.value.userKey)
+    if (!userRecord) return false
     this.res.cookie('session', sessionId, {
       httpOnly: true,
       sameSite: 'lax'
@@ -71,7 +95,8 @@ export class Session {
     this.auth = {
       sessionId: sessionRecord.value.sessionId,
       userKey: sessionRecord.value.userKey,
-      username: sessionRecord.value.username
+      username: userRecord.value.username,
+      role: userRecord.value.role
     }
     return true
   }
@@ -99,10 +124,14 @@ export async function getSessionAuth (authHeader: string|undefined, sessionCooki
   if (sessionCookie) {
     const sessionRecord = await userSessions(serverdb.get()).get(sessionCookie).catch((e: any) => undefined)
     if (sessionRecord?.value) {
-      auth = {
-        sessionId: sessionRecord.value.sessionId,
-        userKey: sessionRecord.value.userKey,
-        username: sessionRecord.value.username
+      const userRecord = await users(serverdb.get()).get(sessionRecord.value.userKey)
+      if (userRecord?.value) {
+        auth = {
+          sessionId: sessionRecord.value.sessionId,
+          userKey: sessionRecord.value.userKey,
+          username: userRecord.value.username,
+          role: userRecord.value.role
+        }
       }
     }
   } else if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -111,7 +140,7 @@ export async function getSessionAuth (authHeader: string|undefined, sessionCooki
     if (srv) {
       auth = {serviceKey: srv.serviceKey}
     } else if (Config.getActiveConfig().systemAuthTokens.includes(token)){
-      auth = {serviceKey: 'system'}
+      auth = {userKey: 'system', username: 'system', role: 'admin'}
     }
   }
   return auth

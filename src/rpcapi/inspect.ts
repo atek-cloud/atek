@@ -3,7 +3,13 @@ import { Config } from '../config.js'
 
 export function setup () {
   return createServer({
-    isReady: () => true,
-    getConfig: () => Config.getActiveConfig().values
+    isReady () {
+      this.session.assertIsAdminAuthed()
+      return true
+    },
+    getConfig () {
+      this.session.assertIsAdminAuthed()
+      return Config.getActiveConfig().values
+    }
   })
 }
