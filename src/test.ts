@@ -1,4 +1,4 @@
-import { ConfigValues } from './config.js'
+import { ConfigValues, DEFAULT_CORE_SERVICES } from './config.js'
 import { InstallParams } from './services/index.js'
 import { spawn, ChildProcess } from 'child_process'
 import tmp from 'tmp'
@@ -16,11 +16,11 @@ export class Config implements ConfigValues {
   port?: number
   serverDbId?: string
   coreServices: InstallParams[] = [
-    {
-      sourceUrl: 'https://github.com/atek-cloud/hyper-daemon',
-      config: {SIMULATE_HYPERSPACE: '1'}
-    },
-    {sourceUrl: 'https://github.com/atek-cloud/adb'}
+    Object.assign({},
+      DEFAULT_CORE_SERVICES.find(c => c.sourceUrl === 'https://github.com/atek-cloud/hyper-daemon'),
+      {config: {SIMULATE_HYPERSPACE: '1'}}
+    ),
+    Object.assign({}, DEFAULT_CORE_SERVICES.find(c => c.sourceUrl === 'https://github.com/atek-cloud/adb'))
   ]
   systemAuthTokens: string[] = []
 
