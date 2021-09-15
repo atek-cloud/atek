@@ -7,9 +7,9 @@ export const DEFAULT_HOST_PORT = 80
 let _activeConfig: Config | undefined = undefined
 
 const DEFAULT_CORE_SERVICES: InstallParams[] = [
-  {id: 'core.hyper-daemon', sourceUrl: 'https://github.com/atek-cloud/hyper-daemon', desiredVersion: '2.0.0'},
-  {id: 'core.adb',          sourceUrl: 'https://github.com/atek-cloud/adb',          desiredVersion: '1.0.1'},
-  {id: 'core.lonestar',     sourceUrl: 'https://github.com/atek-cloud/lonestar',     desiredVersion: '1.0.1'},
+  {id: 'core.hyper-daemon', sourceUrl: 'file:///Users/paulfrazee/work/atek/hyper-daemon', desiredVersion: '2.0.0'},
+  {id: 'core.adb',          sourceUrl: 'file:///Users/paulfrazee/work/atek/adb',          desiredVersion: '1.0.1'},
+  {id: 'core.lonestar',     sourceUrl: 'file:///Users/paulfrazee/work/atek/lonestar',     desiredVersion: '1.0.2'},
 ]
 const DEFAULT_MAIN_SERVICE = 'core.lonestar'
 

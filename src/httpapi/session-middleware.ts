@@ -1,10 +1,11 @@
-import * as http from 'http'
 import * as express from 'express'
 import { v4 as uuidv4 } from 'uuid'
 import { Config } from '../config.js'
 import * as serverdb from '../serverdb/index.js'
 import { userSessions } from '@atek-cloud/adb-tables'
 import * as services from '../services/index.js'
+
+const bindSessionTokens = new Map<string, string>()
 
 export interface SessionAuth {
   sessionId?: string
@@ -55,9 +56,24 @@ export class Session {
     }
     this.res.cookie('session', sess.sessionId, {
       httpOnly: true,
+      sameSite: 'lax' // must be lax to enable the /_atek/bind-session redirects
+    })
+  }
+
+  async bind (sessionId: string): Promise<boolean> {
+    if (!this.req || !this.res) throw new Error('Unable to create session on this request')
+    const sessionRecord = await userSessions(serverdb.get()).get(sessionId).catch((e: any) => undefined)
+    if (!sessionRecord) return false
+    this.res.cookie('session', sessionId, {
+      httpOnly: true,
       sameSite: 'strict'
     })
-
+    this.auth = {
+      sessionId: sessionRecord.value.sessionId,
+      userKey: sessionRecord.value.userKey,
+      username: sessionRecord.value.username
+    }
+    return true
   }
 
   async destroy (): Promise<void> {
@@ -67,6 +83,14 @@ export class Session {
       this.auth = undefined
       await userSessions(serverdb.get()).delete(this.req.cookies.session)
     }
+  }
+}
+
+export function setup () {
+  return async (req: RequestWithSession, res: express.Response, next: express.NextFunction) => {
+    const auth = await getSessionAuth(req.headers.authorization, req.cookies.session)
+    req.session = new Session(req, res, auth)
+    next()
   }
 }
 
@@ -93,10 +117,19 @@ export async function getSessionAuth (authHeader: string|undefined, sessionCooki
   return auth
 }
 
-export function setup () {
-  return async (req: RequestWithSession, res: express.Response, next: express.NextFunction) => {
-    const auth = await getSessionAuth(req.headers.authorization, req.cookies.session)
-    req.session = new Session(req, res, auth)
-    next()
+export function genBindSessionToken (sessionId: string) {
+  const token = uuidv4()
+  bindSessionTokens.set(token, sessionId)
+  return token
+}
+
+export async function attemptBindSession (req: RequestWithSession, res: express.Response): Promise<boolean> {
+  if (typeof req.query.bst === 'string') {
+    const sessionId = bindSessionTokens.get(req.query.bst)
+    if (sessionId) {
+      bindSessionTokens.delete(req.query.bst)
+      return (await req.session?.bind(sessionId)) || false
+    }
   }
+  return false
 }

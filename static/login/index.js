@@ -1,6 +1,6 @@
 import { create } from './rpc.js'
 
-const api = create('/_atek/gateway?api=atek.cloud%2Fuser-sessions')
+const api = create('/_atek/gateway?api=atek.cloud%2Fuser-sessions-api')
 
 class CtznLogin extends HTMLElement {
   $ (sel) {
@@ -33,14 +33,17 @@ class CtznLogin extends HTMLElement {
 
   async onSubmit (e) {
     e.preventDefault()
-    this.$('.error').textContent = ''
+    if (this.$('.error')) {
+      this.$('.error').textContent = ''
+    }
     let creds = {
       username: e.target.username.value,
       password: e.target.password.value
     }
     try {
       await api.login(creds)
-      window.location = '/'
+      var searchParams = new URLSearchParams(window.location.search)
+      window.location = searchParams.get('redirect') || '/'
     } catch (e) {
       console.log(e)
       this.$('.error').textContent = e.data || e.message || e.toString()

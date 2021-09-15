@@ -26,7 +26,7 @@ import * as setupFlow from './setup-flow.js'
 import fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
-import { fileURLToPath } from 'url'
+import { URL, fileURLToPath } from 'url'
 
 const HERE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -105,6 +105,8 @@ function createServer (config: Config) {
   app.use(cors())
   app.use(cookieParser())
   app.use(sessionMiddleware.setup())
+  app.set('view engine', 'ejs')
+  app.set('views', path.join(HERE_PATH, 'static', 'views'))
 
   // rate limiter
   const rl = new RateLimiter({
@@ -125,31 +127,41 @@ function createServer (config: Config) {
     next()
   })
 
+  // grab the subdomain (it comes up a lot)
+  app.use((req: sessionMiddleware.RequestWithSession, res: express.Response, next: express.NextFunction) => {
+    const host = (req.headers.host || '').split(':')[0]
+    res.locals.hostParts = host.split('.')
+    res.locals.subdomain = res.locals.hostParts.length > 1 ? res.locals.hostParts.slice(0, -1).join('.') : ''
+    next()
+  })
+
   // auth
-  // TODO
-  /*app.use((req: sessionMiddleware.RequestWithSession, res: express.Response, next: express.NextFunction) => {
+  app.use(async (req: sessionMiddleware.RequestWithSession, res: express.Response, next: express.NextFunction) => {
     if (!isRequestSafe(config, req) && !req.session?.isAuthed()) {
-      return res.redirect(`http://${config.domain}/_atek/login`)
+      if (res.locals.subdomain) {
+        if (await sessionMiddleware.attemptBindSession(req, res)) {
+          return next()
+        }
+        return res.redirect(`http://${config.domain}/_atek/bind-session?service=${encodeURIComponent(res.locals.subdomain)}&path=${req.originalUrl}`)
+      } else {
+        return res.redirect(`http://${config.domain}/_atek/login`)
+      }
     } else {
       next()
     }
-  })*/
+  })
 
   // subdomain proxies
-  const suffix = `.${config.domain}`
-  const slice = suffix.length * -1
   app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const host = (req.headers.host || '').split(':')[0]
-    if (host.endsWith(suffix)) {
-      const subdomain = host.slice(0, slice)
-      const service = services.get(subdomain)
+    if (res.locals.subdomain) {
+      const service = services.get(res.locals.subdomain)
       if (service) {
         try {
           return getProxy(service).web(req, res, undefined, (e: Error) => {
-            if (e) proxyError(e, res, subdomain)
+            if (e) proxyError(e, res, res.locals.subdomain)
           })
         } catch (e: any) {
-          return proxyError(e, res, subdomain)
+          return proxyError(e, res, res.locals.subdomain)
         }
       } else {
         res.status(404).end(`Not found: no service is currently hosted at ${req.headers.host}`)
@@ -161,8 +173,30 @@ function createServer (config: Config) {
 
   // API servers
   app.use('/_atek', express.json())
-  app.use('/_atek/login/', express.static(path.join(HERE_PATH, 'static', 'login')))
   apiGatewayHttpApi.setup(app)
+
+  // login and session acquisition
+  app.use('/_atek/login/', express.static(path.join(HERE_PATH, 'static', 'login')))
+  app.get('/_atek/bind-session', (req: sessionMiddleware.RequestWithSession, res: express.Response) => {
+    const serviceId = req.query.service
+    const redirectPath = typeof req.query.path === 'string' ? req.query.path : '/'
+    if (typeof serviceId !== 'string' || !services.get(serviceId)) {
+      // invalid service
+      return res.status(400).json({error: 'Not authorized'})
+    }
+
+    const redirectTo = (new URL(redirectPath, `http://${serviceId}.localhost/`))
+    redirectTo.host = `${serviceId}.localhost`
+    
+    if (!req.session?.auth?.sessionId) {
+      // no active session, try to login
+      return res.redirect(`/_atek/login?redirect=${encodeURIComponent(redirectTo.toString())}`)
+    }
+
+    const bindSessionToken = sessionMiddleware.genBindSessionToken(req.session?.auth?.sessionId)
+    redirectTo.searchParams.set('bst', bindSessionToken)
+    res.redirect(redirectTo.toString())
+  })
   app.use('/_atek', (req: express.Request, res: express.Response) => json404(res, 'Not found'))
 
   // "main service"
