@@ -320,6 +320,7 @@ async function fetchPackage (params: InstallParams) {
   let installedVersion = undefined
   let didChange = false
   if (params?.sourceUrl && !params.sourceUrl.startsWith('file://')) {
+    const prevVersion = await git.getCurrentVersion(params.id).catch(e => undefined)
     try {
       await git.clone(params.id, params.sourceUrl)
     } catch (e: any) {
@@ -335,7 +336,6 @@ async function fetchPackage (params: InstallParams) {
       }
     }
     sourceType = 'git'
-    const prevVersion = await git.getCurrentVersion(params.id)
     installedVersion = await git.getLatestVersion(params.id, params.desiredVersion || 'latest')
     if (!installedVersion) {
       throw new Error(`This git repo has not published any releases.`)
