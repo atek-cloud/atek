@@ -66,7 +66,7 @@ export class Session {
     if (!sessionRecord) return false
     this.res.cookie('session', sessionId, {
       httpOnly: true,
-      sameSite: 'strict'
+      sameSite: 'lax'
     })
     this.auth = {
       sessionId: sessionRecord.value.sessionId,
