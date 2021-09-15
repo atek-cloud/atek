@@ -1,0 +1,9 @@
+{
+  "name": "NAME",
+  "description": "DESCRIPTION",
+  "author": "AUTHOR",
+  "license": "LICENSE",
+  "exports": [
+    {"api": "auth-app-one.com/api", "path": "/_api"}
+  ]
+}

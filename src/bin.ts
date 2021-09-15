@@ -31,7 +31,7 @@ async function apiCall (args: any, apiId: string, method: string, params: any[])
   const config = new Config(args.configDir || path.join(os.homedir(), '.atek'), {})
   const api = createApi(`http://localhost:${config.port}`, {api: apiId}, config.systemAuthTokens[0])
   try {
-    return await api(method, params)
+    return await api.call(method, params)
   } catch (e: any) {
     if (e.code === 'ECONNREFUSED') {
       console.error('Failed to connect to Atek.')
@@ -88,7 +88,7 @@ const cmdOpts = {
     },
     {
       name: 'install',
-      help: 'atek install {url_or_path} - Install a new service',
+      help: 'atek install {url_or_path} --user {owning_user} - Install a new service',
       usage,
       command: async (args: any) => {
         if (args._[0]) args.sourceUrl = args._[0]
@@ -99,6 +99,11 @@ const cmdOpts = {
         }
         if (args.sourceUrl.startsWith('/')) {
           args.sourceUrl = `file://${args.sourceUrl}`
+        }
+        if (!args.user) {
+          console.error('--user is required')
+          console.error('(Specify "system" if installing for all users)')
+          process.exit(1)
         }
         console.log(await apiCall(args, 'atek.cloud/services-api', 'install', [args]))
       }

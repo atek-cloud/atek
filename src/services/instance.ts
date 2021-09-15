@@ -14,6 +14,8 @@ import { Service as AtekService, ServiceManifest, ApiExportDesc, ServiceConfig }
 import { ServiceInfo, StatusEnum } from '@atek-cloud/services-api'
 import * as apiBroker from '../broker/index.js'
 import { Session } from '../httpapi/session-middleware.js'
+import { getByKey } from './index.js'
+import { User } from '@atek-cloud/adb-tables'
 
 const NODE_PATH = process.execPath
 
@@ -48,6 +50,9 @@ export class ServiceInstance extends EventEmitter {
     return this.settings.id
   }
 
+  get owningUserKey () {
+    return this.settings.owningUserKey
+  }
 
   get manifest (): ServiceManifest {
     return this.settings.manifest || {}
@@ -92,6 +97,7 @@ export class ServiceInstance extends EventEmitter {
   toJSON (): ServiceInfo {
     return {
       status: this.isActive ? StatusEnum.active : StatusEnum.inactive,
+      key: this.serviceKey,
       settings: this.settings
     }
   }
@@ -299,8 +305,15 @@ function getAuthHeaders (session?: Session): Headers {
   const authHeaders: Headers = {}
   if (session?.isAuthed()) {
     const auth = session?.auth
-    if (auth?.serviceKey) authHeaders['Atek-Authed-Service'] = auth.serviceKey
-    if (auth?.username) authHeaders['Atek-Authed-User'] = auth.username
+    if (auth?.serviceKey) {
+      authHeaders['Atek-Auth-Service'] = auth.serviceKey
+      const service = getByKey(auth.serviceKey)
+      if (service) {
+        authHeaders['Atek-Auth-User'] = service.owningUserKey
+      }
+    } else if (auth?.userKey) {
+      authHeaders['Atek-Auth-User'] = auth.userKey
+    }
   }
   return authHeaders
 }

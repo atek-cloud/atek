@@ -11,7 +11,7 @@ test.serial('Correctly loads core services (hyper, adb) and creates server db', 
   const cfg = new atek.test.Config()
   inst = await atek.test.startAtek(cfg)
 
-  activeCfg = await inst.api('atek.cloud/inspect-api')('getConfig')
+  activeCfg = await inst.api('atek.cloud/inspect-api').call('getConfig')
   t.truthy(activeCfg.serverDbId, 'Server DB ID was created')
   t.is(activeCfg.coreServices.length, 2, 'Core services config match what we passed')
   t.is(activeCfg.coreServices[0].sourceUrl, cfg.coreServices[0].sourceUrl, 'Core services config match what we passed')
@@ -22,7 +22,7 @@ test.serial('Correctly loads core services (hyper, adb) and creates server db', 
 })
 
 test.serial('Routes calls to the server db', async t => {
-  const desc = await inst.api('atek.cloud/adb-api')('dbDescribe', [activeCfg.serverDbId])
+  const desc = await inst.api('atek.cloud/adb-api').call('dbDescribe', [activeCfg.serverDbId])
   t.truthy(desc, 'Returns a description object')
   t.is(desc.dbId, activeCfg.serverDbId, 'Gave the correct database\'s description')
   t.truthy(desc.tables.find((table: any) => table.tableId === 'atek.cloud/database'), 'Registered atek.cloud/database')

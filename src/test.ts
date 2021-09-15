@@ -87,7 +87,7 @@ export async function startAtek (config: Config = new Config()) {
   const inspect = createApi(`http://localhost:${PORT}`, 'atek.cloud/inspect-api', authToken)
   let isReady = false
   for (let i = 0; i < 100; i++) {
-    isReady = await inspect('isReady').then((v) => v, (err) => false)
+    isReady = await inspect.call('isReady').then((v) => v, (err) => false)
     if (isReady) break
     await new Promise(r => setTimeout(r, 1e3))
   }

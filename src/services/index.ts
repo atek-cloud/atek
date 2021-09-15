@@ -1,6 +1,6 @@
 import { ServiceInstance } from './instance.js'
 import adb from '@atek-cloud/adb-api'
-import { services, Service, SourceTypeEnum, ServiceConfig } from '@atek-cloud/adb-tables'
+import { services, Service, SourceTypeEnum, ServiceConfig, users, User, Role as UserRole } from '@atek-cloud/adb-tables'
 import * as serverdb from '../serverdb/index.js'
 import * as git from '../lib/git.js'
 import * as npm from '../lib/npm.js'
@@ -249,6 +249,10 @@ export async function loadCoreService (params: InstallParams): Promise<ServiceIn
 
 export function get (id: string): ServiceInstance | undefined {
   return activeServices.get(id)
+}
+
+export function getByKey (serviceKey: string): ServiceInstance | undefined {
+  return list().find(srv => srv.serviceKey === serviceKey)
 }
 
 export function list (): ServiceInstance[] {
