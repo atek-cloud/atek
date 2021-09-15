@@ -3,6 +3,7 @@ import ansiEscapes from 'ansi-escapes'
 import cliSpinners from 'cli-spinners'
 import figures from 'figures'
 import chalk from 'chalk'
+import isInteractive from 'is-interactive'
 
 const STATUS_WRITE_INTERVAl = cliSpinners.dots.interval
 
@@ -15,7 +16,9 @@ let frameCounter = 0
 
 export function status (...args: any[]) {
   currentStatus = args.join(' ')
-  if (!isOutputtingStatus) {
+  if (!isInteractive()) {
+    // do nothing
+  } else if (!isOutputtingStatus) {
     isOutputtingStatus = true
     outInterval = setInterval(writeStatus, STATUS_WRITE_INTERVAl)
     outInterval.unref()
@@ -25,6 +28,10 @@ export function status (...args: any[]) {
 
 export function endStatus (...args: any[]) {
   currentStatus = args.join(' ')
+  if (!isInteractive()) {
+    if (currentStatus) console.log(currentStatus)
+    return
+  }
   if (currentStatus) {
     writeStatus(true)
   }

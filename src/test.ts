@@ -72,12 +72,15 @@ export async function startAtek (config: Config = new Config()) {
   fs.writeFileSync(cfgPath, JSON.stringify(config))
 
   const binPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bin.js')
+  const env = Object.assign({}, process.env)
+  env.CI = '1' // disables "interactive" CLI output
+  if (INSPECTOR_ENABLED) env.NODE_OPTIONS = `--inspect=localhost:${PORT-1}`
   const serverProcess = spawn(
     'node',
     [binPath, 'run', '--configDir', cfgDir.name, '--port', String(PORT)],
     {
       stdio: [process.stdin, process.stdout, process.stderr],
-      env: INSPECTOR_ENABLED ? Object.assign({}, process.env, {NODE_OPTIONS: `--inspect=localhost:${PORT-1}`}) : undefined
+      env
     }
   )
 

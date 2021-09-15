@@ -7,8 +7,11 @@ import terminalLink from 'terminal-link'
 import { users } from '@atek-cloud/adb-tables'
 import { hashPassword } from './lib/crypto.js'
 import * as serverdb from './serverdb/index.js'
+import isInteractive from 'is-interactive'
 
 export async function run () {
+  if (!isInteractive()) return
+  
   const userRecords = (await users(serverdb.get()).list()).records
   if (userRecords.length > 0) return
 
