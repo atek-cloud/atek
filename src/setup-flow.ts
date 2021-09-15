@@ -22,13 +22,37 @@ export async function run () {
   
   console.log('')
   console.log('Let\'s create your first user')
-  const {username} = await inquirer.prompt([
+  const {username, password} = await createUserPrompt()
+
+  await users(serverdb.get()).create({
+    username,
+    hashedPassword: await hashPassword(password),
+    role: 'admin'
+  })
+  console.log(chalk.green(figures.tick), 'User', username, 'created as an admin')
+  console.log('You\'re good to go!')
+  console.log('')
+  console.log(`  Open ${terminalLink('http://localhost/', 'http://localhost')} to log into Atek.`)
+  console.log('')
+}
+
+export async function createUserPrompt (): Promise<{username: string, password: string}> {
+  const {username} = await createUsernamePrompt()
+  const {password} = await createPasswordPrompt()
+  return {username, password}
+}
+
+export function createUsernamePrompt (): Promise<{username: string}> {
+  return inquirer.prompt([
     {type: 'input', name: 'username', message: 'Username', validate: (input) => {
       if (input.length < 3) return 'Must be 3 or more characters long.'
       if (/[a-z][a-z0-9]*/i.test(input) === false) return 'Please stick to characters and numbers and start with a character'
       return true
     }}
   ])
+}
+
+export async function createPasswordPrompt (): Promise<{password: string}> {
   let password
   do {
     const {pass1} = await inquirer.prompt([
@@ -46,15 +70,18 @@ export async function run () {
     }
     console.log('Those passwords didn\'t match. Mind trying again?')
   } while (true)
+  return {password}
+}
 
-  await users(serverdb.get()).create({
-    username,
-    hashedPassword: await hashPassword(password),
-    role: 'admin'
-  })
-  console.log(chalk.green(figures.tick), 'User', username, 'created as an admin')
-  console.log('You\'re good to go!')
-  console.log('')
-  console.log(`  Open ${terminalLink('http://localhost/', 'http://localhost')} to log into Atek.`)
-  console.log('')
+export function createModUserPrompt (): Promise<{what: string}> {
+  return inquirer.prompt([
+    {type: 'rawlist', name: 'what', message: 'What do you want to change?', choices: ['Password']}
+  ])
+}
+
+export async function confirm (message: string, def: boolean = true): Promise<boolean> {
+  const res = await inquirer.prompt([
+    {type: 'confirm', name: 'confirm', message, default: def}
+  ])
+  return res.confirm
 }

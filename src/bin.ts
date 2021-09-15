@@ -9,6 +9,7 @@ import * as os from 'os'
 import { Config, DEFAULT_REPL_PORT } from './config.js'
 import * as net from 'net'
 import { createApi } from './lib/rpc.js'
+import { createUserPrompt, createPasswordPrompt, createModUserPrompt, confirm } from './setup-flow.js'
 
 const PACKAGE_JSON_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json')
 
@@ -44,6 +45,13 @@ async function apiCall (args: any, apiId: string, method: string, params: any[])
     }
     process.exit(1)
   }
+}
+
+async function lookupUserKey (args: any, username: string): Promise<string> {
+  const {users} = await apiCall(args, 'atek.cloud/users-api', 'list', [])
+  const user = users.find((user: any) => user.username === username)
+  if (!user) throw new Error(`User ${username} not found`)
+  return user.key
 }
 
 function usage (args: any, help: string, usage: string) {
@@ -170,6 +178,42 @@ const cmdOpts = {
       usage,
       command: async (args: any) => {
         await apiCall(args, 'atek.cloud/services-api', 'restart', [args.id || args._[0]])
+      }
+    },
+    {
+      name: 'mkuser',
+      help: 'atek mkuser - Create a user',
+      usage,
+      command: async (args: any) => {
+        const {username, password} = await createUserPrompt()
+        await apiCall(args, 'atek.cloud/users-api', 'create', [{username, password}])
+      },
+    },
+    {
+      name: 'moduser',
+      help: 'atek moduser {id} - Modify a user',
+      usage,
+      command: async (args: any) => {
+        const username = args.id || args._[0]
+        const userKey = await lookupUserKey(args, username)
+        const {what} = await createModUserPrompt()
+        if (what === 'Password') {
+          const {password} = await createPasswordPrompt()
+          await apiCall(args, 'atek.cloud/users-api', 'update', [userKey, {password}])
+        }
+      },
+    },
+    {
+      name: 'deluser',
+      help: 'atek deluser {id} - Delete a user',
+      usage,
+      command: async (args: any) => {
+        const username = args.id || args._[0]
+        const userKey = await lookupUserKey(args, username)
+        if (await confirm(`Are you sure you want to delete ${username}?`, false)) {
+          await apiCall(args, 'atek.cloud/users-api', 'delete', [userKey])
+          console.log(username, `(key=${userKey}) deleted`)
+        }
       }
     },
     {
