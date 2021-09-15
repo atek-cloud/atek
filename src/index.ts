@@ -11,7 +11,6 @@ import { selfupdate } from '@mishguru/selfupdate'
 import { parse as parseCookie } from '@tinyhttp/cookie'
 import adb from '@atek-cloud/adb-api'
 import * as cli from './lib/cli.js'
-import * as repl from './repl/index.js'
 import { Config, ConfigValues } from './config.js'
 import { generateBearerToken } from './lib/crypto.js'
 import * as services from './services/index.js'
@@ -64,7 +63,6 @@ export async function start (opts: StartOpts) {
   adb.api.$setAuthHeader(`Bearer ${config.systemAuthTokens[0]}`)
   cli.endStatus()
 
-  repl.setup()
   const server = createServer(config)
 
   // initiate the services layer

@@ -6,8 +6,7 @@ import * as path from 'path'
 import { fileURLToPath } from 'url'
 import * as fs from 'fs'
 import * as os from 'os'
-import { Config, DEFAULT_REPL_PORT } from './config.js'
-import * as net from 'net'
+import { Config } from './config.js'
 import { createApi } from './lib/rpc.js'
 import { createUserPrompt, createPasswordPrompt, createModUserPrompt, confirm } from './setup-flow.js'
 
@@ -214,23 +213,6 @@ const cmdOpts = {
           await apiCall(args, 'atek.cloud/users-api', 'delete', [userKey])
           console.log(username, `(key=${userKey}) deleted`)
         }
-      }
-    },
-    {
-      name: 'repl',
-      help: 'atek repl - Connect a repl to the atek instance',
-      usage,
-      command: (args: any) => {
-        const port = Number(args.port || DEFAULT_REPL_PORT)
-        const host = args.host || 'localhost'
-        const socket = net.connect(port, host)
-        process.stdin.pipe(socket)
-        socket.pipe(process.stdout)
-        socket.on('connect', () => {
-          process.stdin.setRawMode(true)
-        })
-        socket.on('close', () => process.exit(0))
-        process.on('exit', () => socket.end())
       }
     }
   ],
