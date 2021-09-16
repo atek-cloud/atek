@@ -40,7 +40,6 @@ const manifestValidator = createValidator({
 export interface InstallParams {
   sourceUrl: string
   id?: string
-  port?: number
   desiredVersion?: string
   config?: ServiceConfig
 }
@@ -48,7 +47,6 @@ export interface InstallParams {
 export interface UpdateParams {
   sourceUrl?: string
   id?: string
-  port?: number
   desiredVersion?: string
   config?: ServiceConfig
 }

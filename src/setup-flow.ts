@@ -5,8 +5,8 @@ import figures from 'figures'
 import inquirer from 'inquirer'
 import terminalLink from 'terminal-link'
 import { users } from '@atek-cloud/adb-tables'
-import { hashPassword } from './lib/crypto.js'
 import * as serverdb from './serverdb/index.js'
+import { createUser } from './users/index.js'
 import isInteractive from 'is-interactive'
 
 export async function run () {
@@ -27,11 +27,7 @@ export async function run () {
   console.log('Let\'s create your first user')
   const {username, password} = await createUserPrompt()
 
-  await users(serverdb.get()).create({
-    username,
-    hashedPassword: await hashPassword(password),
-    role: 'admin'
-  })
+  await createUser({username, password, role: 'admin'})
   console.log(chalk.green(figures.tick), 'User', username, 'created as an admin')
   console.log('You\'re good to go!')
   console.log('')

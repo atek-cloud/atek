@@ -22,6 +22,7 @@ export class Config implements ConfigValues {
     ),
     Object.assign({}, DEFAULT_CORE_SERVICES.find(c => c.sourceUrl === 'https://github.com/atek-cloud/adb'))
   ]
+  defaultMainService = ''
   systemAuthTokens: string[] = []
 
   constructor (opts?: ConfigValues) {
@@ -60,6 +61,7 @@ export class TestInstance {
     this.process.kill()
     await p
     this.tmpdir.removeCallback()
+    await new Promise(r => setTimeout(r, 1e3))
   }
 }
 

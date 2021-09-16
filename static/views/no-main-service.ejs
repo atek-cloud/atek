@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      * { box-sizing: border-box; }
+
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: rgb(28, 86, 209);
+        color: #fff;
+        width: 100vw;
+        height: 100vh;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+        margin: 0;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 800px;
+        margin-bottom: 20vh;
+        border-radius: 0.25rem;
+        padding: 1rem 1.5rem;
+        background-color: rgba(37, 99, 235);
+        box-shadow: 0 3px 6px #0002;
+      }
+
+      .container > :first-child { margin-top: 0 }
+      .container > :last-child { margin-bottom: 0 }
+
+      input {
+        display: block;
+        margin-bottom: 0.25rem;
+        background-color: transparent;
+        padding: 1rem;
+        width: 100%;
+        color: #fff;
+        border: 1px solid #fffa;
+        border-radius: 0.25rem;
+        font-size: 1rem;
+        line-height: 1rem;
+      }
+
+      input::placeholder {
+        color: #fff6;
+      }
+
+      button {
+        display: block;
+        width: 100%;
+        font-size: 1.1rem;
+        color: #fff;
+        background-color: #1d53eb;
+        border: 1px solid #2463eb;
+        border-bottom-color: #0f41ab;
+        border-top-color: #4a7be7;
+        border-radius: 0.25rem;
+        padding: 0.7rem;
+      }
+
+      button:disabled {
+        color: #fff7;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Welcome to Atek</h1>
+      <% if (error === 'not-owning-user') { %>
+        <p>Your home application is currently set to an app you didn't install! You'll need to install your own home app.</p>
+      <% } else { %>
+        <p>You need to install a home application!</p>
+      <% } %>
+      <form>
+        <div><input name="url" type="text" placeholder="Enter the installer URL here" value="<%- defaultSourceUrl %>"></div>
+        <div class="error"></div>
+        <div><button type="submit">Install</button></div>
+      </form>
+    </div>
+    <script type="module">
+      import { create } from '/_atek/js/rpc.js'
+
+      const userKey = "<%- userKey %>"
+      const usersApi = create('/_atek/gateway?api=atek.cloud%2Fusers-api')
+      const servicesApi = create('/_atek/gateway?api=atek.cloud%2Fservices-api')
+      const $button = document.body.querySelector('button')
+      const $error = document.body.querySelector('.error')
+      document.body.querySelector('form').addEventListener('submit', async e => {
+        e.preventDefault()
+        $error.textContent = ''
+        $button.disabled = true
+        $button.textContent = 'Installing...'
+        const sourceUrl = e.currentTarget.url.value
+
+        let service
+        try {
+          service = await servicesApi.install({sourceUrl})
+        } catch (e) {
+          console.log(e)
+          $error.textContent = e.toString()
+          $button.disabled = false
+          $button.textContent = 'Install'
+          return
+        }
+
+        try {
+          await usersApi.updateSettings(userKey, {mainServiceId: service.settings.id})
+        } catch (e) {
+          console.log(e)
+          $error.textContent = e.toString()
+          $button.disabled = false
+          $button.textContent = 'Install'
+          return
+        }
+
+        window.location.reload()
+      })
+    </script>
+  </body>
+</html>

@@ -20,6 +20,7 @@ import * as sessionMiddleware from './httpapi/session-middleware.js'
 import * as apiGatewayHttpApi from './httpapi/gateway.js'
 import * as rpcapi from './rpcapi/index.js'
 import * as setupFlow from './setup-flow.js'
+import { getUserSettings } from './users/index.js'
 // import * as perf from './lib/perf.js' TODO
 // import * as metrics from './lib/metrics.js' TODO
 import fs from 'fs'
@@ -174,6 +175,7 @@ function createServer (config: Config) {
   apiGatewayHttpApi.setup(app)
 
   // login and session acquisition
+  app.use('/_atek/js/', express.static(path.join(HERE_PATH, 'static', 'js')))
   app.use('/_atek/login/', express.static(path.join(HERE_PATH, 'static', 'login')))
   app.get('/_atek/bind-session', (req: sessionMiddleware.RequestWithSession, res: express.Response) => {
     const serviceId = req.query.service
@@ -198,21 +200,38 @@ function createServer (config: Config) {
   app.use('/_atek', (req: express.Request, res: express.Response) => json404(res, 'Not found'))
 
   // "main service"
-  app.use((req: express.Request, res: express.Response) => {
-    if (config.mainService) {
-      const service = services.get(config.mainService)
-      if (service) {
-        try {
-          return getProxy(service).web(req, res, undefined, (e: Error) => {
-            if (e) proxyError(e, res, config.mainService)
-          })
-        } catch (e: any) {
-          return proxyError(e, res, config.mainService)
-        }
+  app.use(async (req: sessionMiddleware.RequestWithSession, res: express.Response) => {
+    if (!req.session?.isUserAuthed({notApp: true})) {
+      return res.status(200).json({message: 'Atek online'})
+    }
+    const userKey = req.session.auth?.userKey || ''
+    let mainServiceId: string|undefined
+    try {
+      const userSettings = await getUserSettings(userKey)
+      mainServiceId = userSettings?.mainServiceId
+    } catch (e) {
+      console.error('Failed to lookup user settings for user key=', userKey)
+      console.error(e)
+      return res.status(500).json({error: 'Internal server error. Consult your server logs for more information.'})
+    }
+    const service = services.get(mainServiceId)
+    if (!service) {
+      return res.render('no-main-service', {userKey, error: '', defaultSourceUrl: config.defaultMainService})
+    } else if (service.owningUserKey !== userKey) {
+      return res.render('no-main-service', {
+        userKey,
+        error: 'not-owning-user',
+        defaultSourceUrl: config.defaultMainService
+      })
+    } else {
+      try {
+        return getProxy(service).web(req, res, undefined, (e: Error) => {
+          if (e) proxyError(e, res, mainServiceId || '')
+        })
+      } catch (e: any) {
+        return proxyError(e, res, mainServiceId)
       }
     }
-    res.set('Content-Type', 'text/html')
-    res.status(200).send('<h1>Welcome to Atek</h1><p>Note: No main service is configured. Set "mainService" in your config to the ID of the service you want hosted at your main domain.</p>')
   })
 
   const wsServer = new ws.WebSocketServer({ noServer: true })

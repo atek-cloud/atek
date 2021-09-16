@@ -46,16 +46,16 @@ export class Session {
     if (!this.isAppAuthed()) throw new Error('Not authorized')
   }
 
-  isAccountAuthed (): boolean {
-    return Boolean(this.auth && this.auth.userKey)
+  isUserAuthed ({notApp} = {notApp: false}): boolean {
+    return Boolean(this.auth && this.auth.userKey && (!notApp || !this.isAppAuthed()))
   }
   
-  assertIsAccountAuthed () {
-    if (!this.isAccountAuthed()) throw new Error('Not authorized')
+  assertisUserAuthed () {
+    if (!this.isUserAuthed()) throw new Error('Not authorized')
   }
 
   isAdminAuthed (): boolean {
-    return this.isAccountAuthed() && (this.auth?.userKey === 'system' || this.auth?.role === 'admin')
+    return this.isUserAuthed() && (this.auth?.userKey === 'system' || this.auth?.role === 'admin')
   }
   
   assertIsAdminAuthed () {
@@ -138,7 +138,22 @@ export async function getSessionAuth (authHeader: string|undefined, sessionCooki
     const token = authHeader.split(' ')[1]
     const srv = services.getByBearerToken(token)
     if (srv) {
-      auth = {serviceKey: srv.serviceKey}
+      if (srv.owningUserKey !== 'system') {
+        const userRecord = await users(serverdb.get()).get(srv.owningUserKey)
+        auth = {
+          serviceKey: srv.serviceKey,
+          userKey: srv.owningUserKey,
+          username: userRecord.value.username,
+          role: userRecord.value.role
+        }
+      } else {
+        auth = {
+          serviceKey: srv.serviceKey,
+          userKey: 'system',
+          username: 'system',
+          role: 'admin'
+        }
+      }
     } else if (Config.getActiveConfig().systemAuthTokens.includes(token)){
       auth = {userKey: 'system', username: 'system', role: 'admin'}
     }

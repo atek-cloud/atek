@@ -1,4 +1,4 @@
-import { create } from './rpc.js'
+import { create } from '../rpc.js'
 
 const api = create('/_atek/gateway?api=atek.cloud%2Fuser-sessions-api')
 

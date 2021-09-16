@@ -7,17 +7,16 @@ let _activeConfig: Config | undefined = undefined
 
 export const DEFAULT_CORE_SERVICES: InstallParams[] = [
   {id: 'core.hyper-daemon', sourceUrl: 'https://github.com/atek-cloud/hyper-daemon', desiredVersion: '2.0.0'},
-  {id: 'core.adb',          sourceUrl: 'https://github.com/atek-cloud/adb',          desiredVersion: '1.0.1'},
-  {id: 'core.lonestar',     sourceUrl: 'https://github.com/atek-cloud/lonestar',     desiredVersion: '1.0.2'},
+  {id: 'core.adb',          sourceUrl: 'https://github.com/atek-cloud/adb',          desiredVersion: '1.0.1'}
 ]
-const DEFAULT_MAIN_SERVICE = 'core.lonestar'
+const DEFAULT_DEFAULT_MAIN_SERVICE = 'https://github.com/atek-cloud/lonestar' // that's right. default default. it's the default for the default.
 
 export interface ConfigValues {
   domain?: string
   port?: number
   serverDbId?: string
   coreServices?: InstallParams[]
-  mainService?: string
+  defaultMainService?: string
   systemAuthTokens?: string[]
 }
 
@@ -59,27 +58,27 @@ export class Config implements ConfigValues {
   }
 
   get domain () {
-    return this.overrides.domain || this.values.domain || 'localhost'
+    return fallbacks(this.overrides.domain, this.values.domain, 'localhost')
   }
 
   get port () {
-    return this.overrides.port || this.values.port || DEFAULT_HOST_PORT
+    return fallbacks(this.overrides.port, this.values.port, DEFAULT_HOST_PORT)
   }
 
   get serverDbId () {
-    return this.overrides.serverDbId || this.values.serverDbId || undefined
+    return fallbacks(this.overrides.serverDbId, this.values.serverDbId, undefined)
   }
 
   get coreServices () {
-    return this.overrides.coreServices || this.values.coreServices || DEFAULT_CORE_SERVICES
+    return fallbacks(this.overrides.coreServices, this.values.coreServices, DEFAULT_CORE_SERVICES)
   }
 
-  get mainService () {
-    return this.overrides.mainService || this.values.mainService || DEFAULT_MAIN_SERVICE
+  get defaultMainService () {
+    return fallbacks(this.overrides.defaultMainService, this.values.defaultMainService, DEFAULT_DEFAULT_MAIN_SERVICE)
   }
 
   get systemAuthTokens () {
-    return this.overrides.systemAuthTokens || this.values.systemAuthTokens || []
+    return fallbacks(this.overrides.systemAuthTokens, this.values.systemAuthTokens, [])
   }
 
   isOverridden (key: string): boolean {
@@ -113,4 +112,13 @@ export class Config implements ConfigValues {
     try { fs.mkdirSync(this.configDir) } catch (e) {}
     fs.writeFileSync(this.filePath, JSON.stringify(this.values, null, 2), 'utf8')
   }
+}
+
+function fallbacks (...params: any[]): any {
+  for (const param of params) {
+    if (typeof param !== 'undefined') {
+      return param
+    }
+  }
+  return undefined
 }

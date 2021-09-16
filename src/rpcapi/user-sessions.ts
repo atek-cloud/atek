@@ -8,7 +8,7 @@ export function setup (): AtekRpcServer  {
   return createServer({
     // Get the current session
     whoami (): UserSession {
-      if (this.session.isAccountAuthed()) {
+      if (this.session.isUserAuthed()) {
         return {
           isActive: true,
           username: this.session.auth.username
