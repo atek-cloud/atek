@@ -97,7 +97,12 @@ export async function loadUserServices (): Promise<void> {
   const srvRecords = (await services(serverdb.get()).list()).records
   for (const srvRecord of srvRecords) {
     cli.status('Loading installed services', cli.genProgress(i++, srvRecords.length), 'Now loading:', chalk.green(srvRecord.value.sourceUrl))
-    await load(srvRecord.key, srvRecord.value)
+    try {
+      await load(srvRecord.key, srvRecord.value)
+    } catch (e) {
+      console.error('Failed to load', srvRecord.value.id)
+      console.error(e)
+    }
   }
   cli.endStatus('Loaded installed services')
 }
