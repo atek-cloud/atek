@@ -17,10 +17,10 @@ export class Config implements ConfigValues {
   serverDbId?: string
   coreServices: InstallParams[] = [
     Object.assign({},
-      DEFAULT_CORE_SERVICES.find(c => c.sourceUrl === 'https://github.com/atek-cloud/hyper-daemon'),
+      DEFAULT_CORE_SERVICES.find(c => c.id === 'core.hyper-daemon'),
       {config: {SIMULATE_HYPERSPACE: '1'}}
     ),
-    Object.assign({}, DEFAULT_CORE_SERVICES.find(c => c.sourceUrl === 'https://github.com/atek-cloud/adb'))
+    Object.assign({}, DEFAULT_CORE_SERVICES.find(c => c.id === 'core.adb'))
   ]
   defaultMainService = ''
   systemAuthTokens: string[] = []
