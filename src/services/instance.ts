@@ -13,9 +13,7 @@ import jsonrpc from 'jsonrpc-lite'
 import { Service as AtekService, ServiceManifest, ApiExportDesc, ServiceConfig } from '@atek-cloud/adb-tables'
 import { ServiceInfo, StatusEnum } from '@atek-cloud/services-api'
 import * as apiBroker from '../broker/index.js'
-import { Session } from '../httpapi/session-middleware.js'
-import { getByKey } from './index.js'
-import { User } from '@atek-cloud/adb-tables'
+import { getAuthHeaders } from './util.js'
 
 const NODE_PATH = process.execPath
 
@@ -296,24 +294,4 @@ export class ServiceInstance extends EventEmitter {
 const ANSI_REGEX = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g
 function stripANSICodes (str: string): string {
   return str.replace(ANSI_REGEX, '')
-}
-
-interface Headers {
-  [key: string]: string
-}
-function getAuthHeaders (session?: Session): Headers {
-  const authHeaders: Headers = {}
-  if (session?.isAuthed()) {
-    const auth = session?.auth
-    if (auth?.serviceKey) {
-      authHeaders['Atek-Auth-Service'] = auth.serviceKey
-      const service = getByKey(auth.serviceKey)
-      if (service) {
-        authHeaders['Atek-Auth-User'] = service.owningUserKey
-      }
-    } else if (auth?.userKey) {
-      authHeaders['Atek-Auth-User'] = auth.userKey
-    }
-  }
-  return authHeaders
 }

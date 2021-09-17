@@ -15,6 +15,7 @@ import { Config, ConfigValues } from './config.js'
 import { generateBearerToken } from './lib/crypto.js'
 import * as services from './services/index.js'
 import { ServiceInstance } from './services/instance.js'
+import { getAuthHeaders } from './services/util.js'
 import { setup as setupServerDb } from './serverdb/index.js'
 import * as sessionMiddleware from './httpapi/session-middleware.js'
 import * as apiGatewayHttpApi from './httpapi/gateway.js'
@@ -146,6 +147,7 @@ function createServer (config: Config) {
         return res.redirect(`http://${config.domain}/_atek/login`)
       }
     } else {
+      Object.assign(req.headers, getAuthHeaders(req.session))
       next()
     }
   })

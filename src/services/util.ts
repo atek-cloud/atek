@@ -4,6 +4,9 @@ import * as serverdb from '../serverdb/index.js'
 import lock from '../lib/lock.js'
 import { Record } from '@atek-cloud/adb-api'
 import { services, Service } from '@atek-cloud/adb-tables'
+import { Session } from '../httpapi/session-middleware.js'
+import { getByKey } from './index.js'
+import { User } from '@atek-cloud/adb-tables'
 
 export function sourceUrlToId (sourceUrl: string) {
   const urlp = new URL(sourceUrl)
@@ -35,4 +38,24 @@ export async function getAvailableId (sourceUrl: string): Promise<string> {
   } finally {
     release()
   }
+}
+
+interface Headers {
+  [key: string]: string
+}
+export function getAuthHeaders (session?: Session): Headers {
+  const authHeaders: Headers = {}
+  if (session?.isAuthed()) {
+    const auth = session?.auth
+    if (auth?.serviceKey) {
+      authHeaders['Atek-Auth-Service'] = auth.serviceKey
+      const service = getByKey(auth.serviceKey)
+      if (service) {
+        authHeaders['Atek-Auth-User'] = service.owningUserKey
+      }
+    } else if (auth?.userKey) {
+      authHeaders['Atek-Auth-User'] = auth.userKey
+    }
+  }
+  return authHeaders
 }
