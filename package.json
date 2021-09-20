@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "@atek-cloud/adb-api": "^1.1.0",
-    "@atek-cloud/adb-tables": "^1.3.0",
+    "@atek-cloud/adb-tables": "^1.4.0",
     "@atek-cloud/inspect-api": "^1.0.0",
     "@atek-cloud/node-rpc": "^4.2.0",
     "@atek-cloud/services-api": "^1.2.1",

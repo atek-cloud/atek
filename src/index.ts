@@ -114,7 +114,8 @@ function createServer (config: Config) {
     window: 60e3
   })
   app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-    res.header('Cross-Origin-Opener-Policy', 'same-origin')
+    res.header('Cross-Origin-Opener-Policy', 'cross-origin')
+    res.header('Cross-Origin-Resource-Policy', 'cross-origin')
     res.header('Cross-Origin-Embedder-Policy', 'require-corp')
 
     // metrics.httpRequest({path: req.url})

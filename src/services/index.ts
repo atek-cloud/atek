@@ -1,6 +1,6 @@
 import { ServiceInstance } from './instance.js'
 import adb from '@atek-cloud/adb-api'
-import { services, Service, SourceTypeEnum, ServiceConfig, users, User, Role as UserRole } from '@atek-cloud/adb-tables'
+import { services, Service, SourceTypeEnum, ServiceConfig, ServiceManifest, SERVICE } from '@atek-cloud/adb-tables'
 import * as serverdb from '../serverdb/index.js'
 import * as git from '../lib/git.js'
 import * as npm from '../lib/npm.js'
@@ -14,28 +14,7 @@ import lock from '../lib/lock.js'
 import { sourceUrlToId, getAvailableId, getServiceRecordById } from './util.js'
 import { createValidator } from '../schemas/util.js'
 
-const manifestValidator = createValidator({
-  type: 'object',
-  properties: {
-    title: {type: 'string'},
-    description: {type: 'string'},
-    author: {type: 'string'},
-    license: {type: 'string'},
-    protocols: {
-      type: 'object',
-      properties: {
-        tables: {
-          type: 'array',
-          items: {type: 'string'}
-        }
-      }
-    },
-    permissions: {
-      type: 'array',
-      items: {type: 'string'}
-    }
-  }
-})
+const manifestValidator = createValidator(SERVICE.DEFINITION.definitions.ServiceManifest)
 
 export interface InstallParams {
   sourceUrl: string
@@ -49,16 +28,6 @@ export interface UpdateParams {
   id?: string
   desiredVersion?: string
   config?: ServiceConfig
-}
-
-export interface ServiceManifest {
-  title?: string
-  description?: string
-  author?: string
-  license?: string
-  protocols?: {
-    tables?: string[]
-  }
 }
 
 // globals

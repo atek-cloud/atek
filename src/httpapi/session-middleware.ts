@@ -78,7 +78,8 @@ export class Session {
     }
     this.res.cookie('session', sess.sessionId, {
       httpOnly: true,
-      sameSite: 'lax' // must be lax to enable the /_atek/bind-session redirects
+      secure: true,
+      sameSite: 'none' // must be none to enable the /_atek/bind-session redirects
     })
   }
 
@@ -90,7 +91,8 @@ export class Session {
     if (!userRecord) return false
     this.res.cookie('session', sessionId, {
       httpOnly: true,
-      sameSite: 'lax'
+      secure: true,
+      sameSite: 'none'
     })
     this.auth = {
       sessionId: sessionRecord.value.sessionId,
