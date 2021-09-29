@@ -17,7 +17,7 @@ export function sourceUrlToId (sourceUrl: string) {
 export async function getServiceRecordById (id: string): Promise<Record<Service>> {
   // TODO this should be a value that's automatically indexed by adb -prf
   const srvRecords = (await services(serverdb.get()).list()).records
-  const srvRecord = srvRecords.find((r: Record<Service>) => r.value.id === id)
+  const srvRecord = srvRecords.find((r: Record<Service>) => r.value?.id === id)
   if (!srvRecord) throw new Error(`Service not found with id=${id}`)
   return srvRecord
 }
@@ -43,19 +43,29 @@ export async function getAvailableId (sourceUrl: string): Promise<string> {
 interface Headers {
   [key: string]: string
 }
-export function getAuthHeaders (session?: Session): Headers {
+export function getAuthHeaders (session?: Session, targetServicesKey?: string): Headers {
   const authHeaders: Headers = {}
   if (session?.isAuthed()) {
     const auth = session?.auth
-    if (auth?.serviceKey) {
+    if (auth?.userKey && auth?.serviceKey) {
+      authHeaders['Atek-Auth-User'] = auth.userKey
+      authHeaders['Atek-Auth-Service'] = auth.serviceKey
+    } else if (auth?.serviceKey) {
       authHeaders['Atek-Auth-Service'] = auth.serviceKey
       const service = getByKey(auth.serviceKey)
       if (service) {
         authHeaders['Atek-Auth-User'] = service.owningUserKey
       }
     } else if (auth?.userKey) {
+      authHeaders['Atek-Auth-Service'] = targetServicesKey || '' // user cookie-based session means this is a request on the target service's origin
       authHeaders['Atek-Auth-User'] = auth.userKey
+    } else {
+      delete authHeaders['Atek-Auth-Service']
+      delete authHeaders['Atek-Auth-User']
     }
+  } else {
+    delete authHeaders['Atek-Auth-Service']
+    delete authHeaders['Atek-Auth-User']
   }
   return authHeaders
 }

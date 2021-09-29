@@ -1,5 +1,5 @@
 import { URLSearchParams } from 'url'
-import {fetch, CookieJar} from 'node-fetch-cookies'
+import {fetch, CookieJar} from '@atek-cloud/node-fetch-cookies'
 import jsonrpc from 'jsonrpc-lite'
 import { removeUndefinedsAtEndOfArray } from './functions.js'
 

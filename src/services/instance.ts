@@ -201,7 +201,7 @@ export class ServiceInstance extends EventEmitter {
         path,
         headers: {
           'Content-Type': 'application/json',
-          ...getAuthHeaders(ctx.session)
+          ...getAuthHeaders(ctx.session, this.serviceKey)
         }
       }, JSON.stringify(jsonrpc.request(_id++, methodName, removeUndefinedsAtEndOfArray(params))))
       let parsedBody
@@ -224,7 +224,7 @@ export class ServiceInstance extends EventEmitter {
   handleProxy (callDesc: apiBroker.CallDescription, socket: WebSocket, ctx: apiBroker.CallContext) {
     const apiDesc = this.exportedApis.find(apiDesc => apiDesc.api === callDesc.api && apiDesc.transport === 'proxy')
     if (apiDesc) {
-      const remoteSocket = new WebSocket(`ws+unix://${this.socketPath}:${apiDesc.path || '/'}`, {headers: getAuthHeaders(ctx.session)})
+      const remoteSocket = new WebSocket(`ws+unix://${this.socketPath}:${apiDesc.path || '/'}`, {headers: getAuthHeaders(ctx.session, this.serviceKey)})
       const s1 = createWebSocketStream(socket)
       const s2 = createWebSocketStream(remoteSocket)
       s1.pipe(s2).pipe(s1)
@@ -255,6 +255,7 @@ export class ServiceInstance extends EventEmitter {
     const opts = {
       env: Object.assign({}, this.config, {
         ATEK_ASSIGNED_SOCKET_FILE: this.socketPath,
+        ATEK_ASSIGNED_SERVICE_KEY: this.serviceKey,
         ATEK_HOST_PORT: String(hostcfg.port),
         ATEK_HOST_BEARER_TOKEN: this.bearerToken
       }) as NodeJS.ProcessEnv

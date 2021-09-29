@@ -1,0 +1,1 @@
+declare module '@atek-cloud/node-fetch-cookies';

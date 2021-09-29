@@ -25,8 +25,4 @@ test.serial('Routes calls to the server db', async t => {
   const desc = await inst.api('atek.cloud/adb-api').call('dbDescribe', [activeCfg.serverDbId])
   t.truthy(desc, 'Returns a description object')
   t.is(desc.dbId, activeCfg.serverDbId, 'Gave the correct database\'s description')
-  t.truthy(desc.tables.find((table: any) => table.tableId === 'atek.cloud/database'), 'Registered atek.cloud/database')
-  t.truthy(desc.tables.find((table: any) => table.tableId === 'atek.cloud/user'), 'Registered atek.cloud/user')
-  t.truthy(desc.tables.find((table: any) => table.tableId === 'atek.cloud/user-session'), 'Registered atek.cloud/user-session')
-  t.truthy(desc.tables.find((table: any) => table.tableId === 'atek.cloud/service'), 'Registered atek.cloud/service')
 })

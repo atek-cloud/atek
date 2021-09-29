@@ -148,16 +148,16 @@ function createServer (config: Config) {
         return res.redirect(`http://${config.domain}/_atek/login`)
       }
     } else {
-      Object.assign(req.headers, getAuthHeaders(req.session))
       next()
     }
   })
 
   // subdomain proxies
-  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+  app.use((req: sessionMiddleware.RequestWithSession, res: express.Response, next: express.NextFunction) => {
     if (res.locals.subdomain) {
       const service = services.get(res.locals.subdomain)
       if (service) {
+        Object.assign(req.headers, getAuthHeaders(req.session, service.serviceKey))
         try {
           return getProxy(service).web(req, res, undefined, (e: Error) => {
             if (e) proxyError(e, res, res.locals.subdomain)
@@ -228,6 +228,7 @@ function createServer (config: Config) {
       })
     } else {
       try {
+        Object.assign(req.headers, getAuthHeaders(req.session, service.serviceKey))
         return getProxy(service).web(req, res, undefined, (e: Error) => {
           if (e) proxyError(e, res, mainServiceId || '')
         })
@@ -288,6 +289,7 @@ function proxyError (e: Error, res: express.Response, id: string) {
   console.error(e)
   return res.status(500).end('Internal server error')
 }
+
 
 const proxies = new Map<string, httpProxy>()
 function getProxy (service: ServiceInstance): httpProxy {

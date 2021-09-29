@@ -140,6 +140,7 @@ export async function getSessionAuth (authHeader: string|undefined, sessionCooki
     const token = authHeader.split(' ')[1]
     const srv = services.getByBearerToken(token)
     if (srv) {
+      if (!srv.owningUserKey) return undefined
       if (srv.owningUserKey !== 'system') {
         const userRecord = await users(serverdb.get()).get(srv.owningUserKey)
         auth = {
@@ -157,7 +158,7 @@ export async function getSessionAuth (authHeader: string|undefined, sessionCooki
         }
       }
     } else if (Config.getActiveConfig().systemAuthTokens.includes(token)){
-      auth = {userKey: 'system', username: 'system', role: 'admin'}
+      auth = {userKey: 'system', serviceKey: 'system', username: 'system', role: 'admin'}
     }
   }
   return auth
