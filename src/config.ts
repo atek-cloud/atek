@@ -7,7 +7,7 @@ let _activeConfig: Config | undefined = undefined
 
 export const DEFAULT_CORE_SERVICES: InstallParams[] = [
   {id: 'core.hyper-daemon', sourceUrl: 'https://github.com/atek-cloud/hyper-daemon', desiredVersion: '2.0.0'},
-  {id: 'core.adb',          sourceUrl: 'https://github.com/atek-cloud/adb',          desiredVersion: '1.1.0'}
+  {id: 'core.adb',          sourceUrl: 'https://github.com/atek-cloud/adb',          desiredVersion: '2.0.0'}
 ]
 const DEFAULT_DEFAULT_MAIN_SERVICE = 'https://github.com/atek-cloud/lonestar' // that's right. default default. it's the default for the default.
 
