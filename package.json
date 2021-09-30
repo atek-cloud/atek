@@ -45,8 +45,8 @@
     "typescript": "^4.3.5"
   },
   "dependencies": {
-    "@atek-cloud/adb-api": "^1.1.0",
-    "@atek-cloud/adb-tables": "^1.4.0",
+    "@atek-cloud/adb-api": "^2.0.0",
+    "@atek-cloud/adb-tables": "^2.0.0",
     "@atek-cloud/inspect-api": "^1.0.0",
     "@atek-cloud/node-fetch-cookies": "^2.0.4",
     "@atek-cloud/node-rpc": "^4.2.0",
