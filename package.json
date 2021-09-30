@@ -1,6 +1,6 @@
 {
   "name": "@atek-cloud/atek",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "description": "",
   "main": "dist/index.js",
   "bin": "dist/bin.js",
